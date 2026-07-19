@@ -44,8 +44,10 @@ test('installs all integrations without replacing existing hooks', () => {
   assert.equal(claude.model, 'test-model');
   assert.ok(JSON.stringify(claude).includes('echo existing'));
   assert.ok(JSON.stringify(claude).includes(MARKER));
-  assert.equal(fs.statSync(path.join(home, '.sterm')).mode & 0o777, 0o700);
-  assert.equal(fs.statSync(manager.paths.signalSh).mode & 0o777, 0o700);
+  if (process.platform !== 'win32') {
+    assert.equal(fs.statSync(path.join(home, '.sterm')).mode & 0o777, 0o700);
+    assert.equal(fs.statSync(manager.paths.signalSh).mode & 0o777, 0o700);
+  }
 });
 
 test('installation is idempotent', () => {

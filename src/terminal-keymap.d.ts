@@ -6,6 +6,8 @@ export interface TerminalKeyboardEvent {
   ctrlKey: boolean;
 }
 
+export const PI_IMAGE_PASTE_SEQUENCE: string;
+
 export const PI_EDITOR_SEQUENCES: Readonly<{
   newLine: string;
   lineStart: string;

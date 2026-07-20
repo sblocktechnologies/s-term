@@ -14,6 +14,8 @@ S-Term is a desktop terminal and AI agent control plane built with Electron, Rea
 - Clickable HTTP and HTTPS links in terminal output
 - Unread completion badges and native background notifications
 - Repository-owned integrations for Pi, Claude Code, and Codex
+- Clipboard image attachments in Pi with secure temporary-path fallback in other terminals
+- Pi directory, Git, token, context, model, subscription, and reasoning telemetry in pane headers
 - Native copy, paste, resize, and true color support
 
 ## Development
@@ -98,8 +100,8 @@ S-Term source code is available under the MIT License. S-Block names and brand a
 - `Cmd/Ctrl + 1`: Focus mode
 - `Cmd/Ctrl + 4`: Grid mode
 - `Cmd/Ctrl + W`: Close active terminal
-- `Cmd + C/V` on macOS: Copy and paste
-- `Ctrl + Shift + C/V` on Windows and Linux: Copy and paste
+- `Cmd + C/V` on macOS: Copy and paste text or images
+- `Ctrl + Shift + C/V` on Windows and Linux: Copy and paste text or images
 - `Cmd/Ctrl + K`: Clear terminal
 - `Shift + Enter` in Pi: Insert a newline
 - `Cmd + Left/Right` in Pi: Move to the start or end of the current line

@@ -1,8 +1,8 @@
-# S-Term agent status protocol
+# S-Term agent protocol
 
 S-Term listens for OSC 777 sequences written to the terminal attached to an agent.
 
-## Format
+## Status messages
 
 ```text
 ESC ] 777 ; sterm;v=1;state=<state>;agent=<agent>;message=<encoded-message> BEL
@@ -24,4 +24,32 @@ Example:
 printf '\033]777;sterm;v=1;state=complete;agent=generic;message=Task%%20finished\007' > /dev/tty
 ```
 
-The sequence is consumed by S-Term and is not displayed. Other terminal emulators should safely ignore an unknown OSC identifier.
+## Telemetry messages
+
+Pi uses a separate message type for pane-header metadata. Telemetry does not change agent lifecycle, unread, elapsed-time, or notification state.
+
+```text
+ESC ] 777 ; sterm;v=1;event=telemetry;agent=pi;cwd=...;branch=...;dirty=1;input=12000;output=3400;model=... BEL
+```
+
+Supported optional fields are:
+
+- `cwd`
+- `branch`
+- `dirty`
+- `provider`
+- `model`
+- `thinking`
+- `input`
+- `output`
+- `cacheRead`
+- `cacheWrite`
+- `cost`
+- `sub`
+- `contextTokens`
+- `contextWindow`
+- `contextPercent`
+
+No credentials, account identifiers, or authentication tokens are transmitted.
+
+OSC 777 sequences are consumed by S-Term and are not displayed. Other terminal emulators should safely ignore an unknown OSC identifier.

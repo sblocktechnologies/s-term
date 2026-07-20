@@ -1,3 +1,5 @@
+export const PI_IMAGE_PASTE_SEQUENCE = '\x1b[118;6u';
+
 export const PI_EDITOR_SEQUENCES = Object.freeze({
   newLine: '\x1b[13;2u',
   lineStart: '\x1bOH',

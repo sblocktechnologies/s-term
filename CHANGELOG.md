@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.2.0
+
+### Added
+
+- Clipboard image attachments for Pi through the native Pi image workflow
+- Secure temporary PNG path fallback for non-Pi terminals
+- Copy, paste, and clear terminal context menu
+- Pi working directory, Git branch, and dirty-state metadata in pane headers
+- Pi token, cache, context, subscription, cost, model, provider, and reasoning telemetry
+- Responsive telemetry display for focus and grid layouts
+
+### Changed
+
+- Pi's built-in footer is hidden inside compatible S-Term versions to avoid duplicated metadata
+- Text paste now uses xterm's native paste path and bracketed-paste support
+
+### Security
+
+- Temporary clipboard images use randomized names, restricted permissions, size limits, and terminal-scoped cleanup
+- OSC telemetry is length-limited, field-validated, and never includes authentication data
+
 ## 0.1.1
 
 ### Added

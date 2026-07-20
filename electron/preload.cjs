@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('sterm', {
     write: (id, data) => ipcRenderer.send('terminal:write', { id, data }),
     resize: (id, cols, rows) => ipcRenderer.send('terminal:resize', { id, cols, rows }),
     kill: (id) => ipcRenderer.invoke('terminal:kill', id),
+    showContextMenu: (id, canCopy) => ipcRenderer.invoke('terminal:context-menu', { id, canCopy }),
     onData: (id, callback) => {
       const listener = (_event, payload) => {
         if (payload.id === id) callback(payload.data);
@@ -23,7 +24,9 @@ contextBridge.exposeInMainWorld('sterm', {
     },
   },
   clipboard: {
+    hasImage: () => !clipboard.readImage().isEmpty(),
     readText: () => clipboard.readText(),
+    saveImage: (terminalId) => ipcRenderer.invoke('clipboard:save-image', terminalId),
     writeText: (text) => clipboard.writeText(text),
   },
   piSessions: {

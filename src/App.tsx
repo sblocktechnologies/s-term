@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import TerminalPane from './components/TerminalPane';
 import IntegrationsModal from './components/IntegrationsModal';
 import TerminalLauncherModal from './components/TerminalLauncherModal';
-import { agentDisplayName, type AgentSignal, type AgentState } from './agentProtocol';
+import { agentDisplayName, type AgentProtocolMessage, type AgentState, type AgentTelemetry } from './agentProtocol.js';
 import sblockLogo from './assets/sblock-logo.svg';
 import {
   AlertIcon,
@@ -33,6 +33,7 @@ interface Session {
   agentStatus: AgentState;
   agentName?: string;
   agentMessage?: string;
+  telemetry?: AgentTelemetry;
   agentStartedAt?: number;
   agentUpdatedAt?: number;
   unread: boolean;
@@ -263,7 +264,7 @@ export default function App() {
     }
   }, [commitGridSlots]);
 
-  const updateSession = useCallback((id: string, patch: Partial<Pick<Session, 'title' | 'status'>>) => {
+  const updateSession = useCallback((id: string, patch: Partial<Pick<Session, 'title' | 'status' | 'telemetry' | 'agentStatus'>>) => {
     setSessions((current) => {
       const session = current.find((item) => item.id === id);
       if (!session || Object.entries(patch).every(([key, value]) => session[key as keyof Session] === value)) {
@@ -275,7 +276,18 @@ export default function App() {
     });
   }, []);
 
-  const handleAgentSignal = useCallback((id: string, signal: AgentSignal) => {
+  const handleAgentSignal = useCallback((id: string, signal: AgentProtocolMessage) => {
+    if (signal.event === 'telemetry') {
+      setSessions((current) => {
+        const next = current.map((session) => session.id === id
+          ? { ...session, agentName: signal.agent, telemetry: signal }
+          : session);
+        sessionsRef.current = next;
+        return next;
+      });
+      return;
+    }
+
     const timestamp = Date.now();
     const viewed = activeIdRef.current === id && document.hasFocus();
     const notable = signal.state === 'attention' || signal.state === 'complete' || signal.state === 'error';
@@ -522,6 +534,7 @@ export default function App() {
                 piMode={session.launch?.type === 'pi-session' || session.agentName === 'pi'}
                 agentStatus={session.agentStatus}
                 agentName={agentDisplayName(session.agentName)}
+                telemetry={session.telemetry}
                 active={session.id === activeId}
                 visible={order !== undefined}
                 order={order ?? 99}
@@ -537,7 +550,10 @@ export default function App() {
                 }}
                 onClose={() => closeTerminal(session.id)}
                 onTitleChange={(title) => updateSession(session.id, { title })}
-                onStatusChange={(status) => updateSession(session.id, { status })}
+                onStatusChange={(status) => updateSession(session.id, {
+                  status,
+                  ...(status === 'exited' ? { telemetry: undefined, agentStatus: 'idle' as const } : {}),
+                })}
                 onAgentSignal={(signal) => handleAgentSignal(session.id, signal)}
                 onFocusMode={() => {
                   activeIdRef.current = session.id;

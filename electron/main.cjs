@@ -1,12 +1,14 @@
-const { app, BrowserWindow, ipcMain, shell, Notification } = require('electron');
+const { app, BrowserWindow, clipboard, ipcMain, Menu, shell, Notification } = require('electron');
 const path = require('node:path');
 const os = require('node:os');
 const fs = require('node:fs');
 const pty = require('node-pty');
+const { saveClipboardImage } = require('./clipboard-images.cjs');
 const { createIntegrationManager } = require('./integration-manager.cjs');
 const { listPiSessions, validatePiSession } = require('./pi-sessions.cjs');
 
 const terminals = new Map();
+let clipboardImageDirectory;
 let integrationManager;
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
 
@@ -47,11 +49,23 @@ function getShell() {
   };
 }
 
+function cleanupTerminalImages(entry) {
+  for (const file of entry.tempImages || []) {
+    try {
+      fs.rmSync(file, { force: true });
+    } catch {
+      // Temporary image cleanup is best effort.
+    }
+  }
+  entry.tempImages?.clear();
+}
+
 function killTerminal(key) {
   const entry = terminals.get(key);
   if (!entry) return;
 
   terminals.delete(key);
+  cleanupTerminalImages(entry);
   try {
     entry.process.kill();
   } catch {
@@ -95,11 +109,12 @@ function registerIpc() {
         TERM_PROGRAM: 'S-Term',
         TERM_PROGRAM_VERSION: app.getVersion(),
         STERM_SESSION_ID: terminalId,
+        STERM_TELEMETRY_HEADER: '1',
         STERM_INTEGRATIONS_DIR: path.join(os.homedir(), '.sterm', 'integrations'),
       },
     });
 
-    terminals.set(key, { process: child, ownerId, terminalId });
+    terminals.set(key, { process: child, ownerId, terminalId, tempImages: new Set() });
 
     child.onData((data) => {
       if (!event.sender.isDestroyed()) {
@@ -108,6 +123,8 @@ function registerIpc() {
     });
 
     child.onExit(({ exitCode, signal }) => {
+      const entry = terminals.get(key);
+      if (entry) cleanupTerminalImages(entry);
       terminals.delete(key);
       if (!event.sender.isDestroyed()) {
         event.sender.send('terminal:exit', { id: terminalId, exitCode, signal });
@@ -147,6 +164,43 @@ function registerIpc() {
   ipcMain.handle('terminal:kill', (event, terminalId) => {
     if (!isValidTerminalId(terminalId)) return;
     killTerminal(terminalKey(event.sender.id, terminalId));
+  });
+
+  ipcMain.handle('clipboard:save-image', (event, terminalId) => {
+    if (!isValidTerminalId(terminalId)) throw new Error('Invalid terminal id');
+    const entry = terminals.get(terminalKey(event.sender.id, terminalId));
+    if (!entry) throw new Error('Terminal is not running');
+
+    if (!clipboardImageDirectory) {
+      clipboardImageDirectory = fs.mkdtempSync(path.join(app.getPath('temp'), 's-term-images-'));
+    }
+    const file = saveClipboardImage(clipboard.readImage(), clipboardImageDirectory);
+    if (file) entry.tempImages.add(file);
+    return file;
+  });
+
+  ipcMain.handle('terminal:context-menu', (event, payload = {}) => {
+    if (!isValidTerminalId(payload.id)) return;
+    if (!terminals.has(terminalKey(event.sender.id, payload.id))) return;
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!window) return;
+    const menu = Menu.buildFromTemplate([
+      {
+        label: 'Copy',
+        enabled: Boolean(payload.canCopy),
+        click: () => event.sender.send('app:command', 'copy'),
+      },
+      {
+        label: 'Paste',
+        click: () => event.sender.send('app:command', 'paste'),
+      },
+      { type: 'separator' },
+      {
+        label: 'Clear',
+        click: () => event.sender.send('app:command', 'clear'),
+      },
+    ]);
+    menu.popup({ window });
   });
 
   ipcMain.handle('pi:sessions:list', (_event, limit) => listPiSessions({ limit }));
@@ -252,4 +306,12 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   for (const key of [...terminals.keys()]) killTerminal(key);
+  if (clipboardImageDirectory) {
+    try {
+      fs.rmSync(clipboardImageDirectory, { recursive: true, force: true });
+    } catch {
+      // Temporary image cleanup is best effort.
+    }
+    clipboardImageDirectory = undefined;
+  }
 });

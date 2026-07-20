@@ -3,8 +3,8 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { CloseIcon, GridIcon, TerminalIcon } from '../icons';
-import { parseAgentSignal, STERM_OSC_ID, type AgentSignal, type AgentState } from '../agentProtocol';
-import { getPiEditorSequence } from '../terminal-keymap.js';
+import { parseAgentSignal, STERM_OSC_ID, type AgentProtocolMessage, type AgentState, type AgentTelemetry } from '../agentProtocol.js';
+import { getPiEditorSequence, PI_IMAGE_PASTE_SEQUENCE } from '../terminal-keymap.js';
 
 interface TerminalPaneProps {
   id: string;
@@ -15,6 +15,7 @@ interface TerminalPaneProps {
   piMode: boolean;
   agentStatus: AgentState;
   agentName?: string;
+  telemetry?: AgentTelemetry;
   active: boolean;
   visible: boolean;
   order: number;
@@ -23,7 +24,7 @@ interface TerminalPaneProps {
   onClose: () => void;
   onTitleChange: (title: string) => void;
   onStatusChange: (status: 'running' | 'exited') => void;
-  onAgentSignal: (signal: AgentSignal) => void;
+  onAgentSignal: (signal: AgentProtocolMessage) => void;
   onFocusMode: () => void;
   onRemoveFromGrid?: () => void;
   onTerminalDrop?: (terminalId: string) => void;
@@ -31,6 +32,37 @@ interface TerminalPaneProps {
 
 function cleanTitle(title: string) {
   return title.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 90);
+}
+
+function formatTokens(count: number | undefined) {
+  if (count === undefined) return '';
+  if (count < 1_000) return String(count);
+  if (count < 10_000) return `${(count / 1_000).toFixed(1)}k`;
+  if (count < 1_000_000) return `${Math.round(count / 1_000)}k`;
+  if (count < 10_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  return `${Math.round(count / 1_000_000)}M`;
+}
+
+function shellQuotedPath(file: string) {
+  if (window.sterm.platform === 'win32') return `"${file.replaceAll('"', '""')}"`;
+  return `'${file.replaceAll("'", "'\\''")}'`;
+}
+
+function telemetryTitle(telemetry: AgentTelemetry) {
+  const details = [telemetry.cwd];
+  if (telemetry.gitBranch) details.push(`${telemetry.gitBranch}${telemetry.gitDirty ? ' (dirty)' : ''}`);
+  details.push(`Input ${formatTokens(telemetry.inputTokens) || '0'}`);
+  details.push(`Output ${formatTokens(telemetry.outputTokens) || '0'}`);
+  if (telemetry.cacheReadTokens) details.push(`Cache read ${formatTokens(telemetry.cacheReadTokens)}`);
+  if (telemetry.cacheWriteTokens) details.push(`Cache write ${formatTokens(telemetry.cacheWriteTokens)}`);
+  if (telemetry.subscription) details.push('Subscription');
+  else if (telemetry.cost !== undefined) details.push(`$${telemetry.cost.toFixed(3)}`);
+  if (telemetry.contextWindow) {
+    details.push(`Context ${telemetry.contextPercent === undefined ? '?' : `${telemetry.contextPercent.toFixed(1)}%`}/${formatTokens(telemetry.contextWindow)}`);
+  }
+  if (telemetry.provider || telemetry.model) details.push([telemetry.provider, telemetry.model].filter(Boolean).join('/'));
+  if (telemetry.thinking) details.push(`Reasoning ${telemetry.thinking}`);
+  return details.filter(Boolean).join(' · ');
 }
 
 export default function TerminalPane({
@@ -42,6 +74,7 @@ export default function TerminalPane({
   piMode,
   agentStatus,
   agentName,
+  telemetry,
   active,
   visible,
   order,
@@ -57,6 +90,7 @@ export default function TerminalPane({
 }: TerminalPaneProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
+  const pasteRef = useRef<() => void>(() => undefined);
   const piModeRef = useRef(piMode);
   piModeRef.current = piMode;
   const callbacksRef = useRef({ onTitleChange, onStatusChange, onAgentSignal });
@@ -154,6 +188,25 @@ export default function TerminalPane({
       terminal.writeln(`\r\n\x1b[90mProcess exited with code ${exitCode}.\x1b[0m`);
       callbacksRef.current.onStatusChange('exited');
     });
+    const pasteClipboard = async () => {
+      try {
+        if (window.sterm.clipboard.hasImage()) {
+          if (piModeRef.current) {
+            window.sterm.terminal.write(id, PI_IMAGE_PASTE_SEQUENCE);
+            return;
+          }
+          const imagePath = await window.sterm.clipboard.saveImage(id);
+          if (!disposed && imagePath) terminal.paste(shellQuotedPath(imagePath));
+          return;
+        }
+        const text = window.sterm.clipboard.readText();
+        if (text) terminal.paste(text);
+      } catch {
+        // Clipboard access can be denied by the operating system.
+      }
+    };
+    pasteRef.current = () => void pasteClipboard();
+
     const inputDisposable = terminal.onData((data) => window.sterm.terminal.write(id, data));
     const resizeDisposable = terminal.onResize(({ cols, rows }) => {
       window.sterm.terminal.resize(id, cols, rows);
@@ -188,8 +241,7 @@ export default function TerminalPane({
         return false;
       }
       if (pasteShortcut) {
-        const text = window.sterm.clipboard.readText();
-        if (text) window.sterm.terminal.write(id, text);
+        void pasteClipboard();
         return false;
       }
       if (clearShortcut) {
@@ -198,6 +250,12 @@ export default function TerminalPane({
       }
       return true;
     });
+
+    const showContextMenu = (event: MouseEvent) => {
+      event.preventDefault();
+      void window.sterm.terminal.showContextMenu(id, terminal.hasSelection());
+    };
+    host.addEventListener('contextmenu', showContextMenu);
 
     const resizeObserver = new ResizeObserver(fit);
     resizeObserver.observe(host);
@@ -226,6 +284,8 @@ export default function TerminalPane({
       disposed = true;
       cancelAnimationFrame(fitFrame);
       resizeObserver.disconnect();
+      host.removeEventListener('contextmenu', showContextMenu);
+      pasteRef.current = () => undefined;
       stopData();
       stopExit();
       inputDisposable.dispose();
@@ -257,8 +317,7 @@ export default function TerminalPane({
       if (command === 'copy' && terminal.hasSelection()) {
         window.sterm.clipboard.writeText(terminal.getSelection());
       } else if (command === 'paste') {
-        const text = window.sterm.clipboard.readText();
-        if (text) window.sterm.terminal.write(id, text);
+        pasteRef.current();
       } else if (command === 'clear') {
         terminal.clear();
       }
@@ -295,6 +354,39 @@ export default function TerminalPane({
             </span>
           )}
         </div>
+        {telemetry && (
+          <div className="pane-telemetry" title={telemetryTitle(telemetry)}>
+            {telemetry.cwd && <span className="pane-cwd">{telemetry.cwd}</span>}
+            {telemetry.gitBranch && (
+              <span className={`pane-git${telemetry.gitDirty ? ' dirty' : ''}`}>
+                {telemetry.gitBranch}{telemetry.gitDirty ? '*' : ''}
+              </span>
+            )}
+            {(telemetry.inputTokens !== undefined || telemetry.outputTokens !== undefined) && (
+              <span className="pane-usage pane-meta-secondary">
+                ↑{formatTokens(telemetry.inputTokens) || '0'} ↓{formatTokens(telemetry.outputTokens) || '0'}
+              </span>
+            )}
+            {(telemetry.cacheReadTokens || telemetry.cacheWriteTokens) ? (
+              <span className="pane-cache pane-meta-tertiary">
+                {telemetry.cacheReadTokens ? `R${formatTokens(telemetry.cacheReadTokens)}` : ''}
+                {telemetry.cacheWriteTokens ? ` W${formatTokens(telemetry.cacheWriteTokens)}` : ''}
+              </span>
+            ) : null}
+            {telemetry.contextWindow && (
+              <span className={`pane-context${(telemetry.contextPercent || 0) > 90 ? ' danger' : (telemetry.contextPercent || 0) > 70 ? ' warning' : ''}`}>
+                {telemetry.contextPercent === undefined ? '?' : `${telemetry.contextPercent.toFixed(1)}%`}/{formatTokens(telemetry.contextWindow)}
+              </span>
+            )}
+            {telemetry.subscription ? (
+              <span className="pane-billing pane-meta-secondary">sub</span>
+            ) : telemetry.cost !== undefined ? (
+              <span className="pane-billing pane-meta-secondary">${telemetry.cost.toFixed(3)}</span>
+            ) : null}
+            {telemetry.model && <span className="pane-model">{telemetry.model}</span>}
+            {telemetry.thinking && <span className="pane-thinking">{telemetry.thinking}</span>}
+          </div>
+        )}
         <div className="pane-actions">
           {onRemoveFromGrid && (
             <button

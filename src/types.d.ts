@@ -56,11 +56,14 @@ interface Window {
       write: (id: string, data: string) => void;
       resize: (id: string, cols: number, rows: number) => void;
       kill: (id: string) => Promise<void>;
+      showContextMenu: (id: string, canCopy: boolean) => Promise<void>;
       onData: (id: string, callback: (data: string) => void) => () => void;
       onExit: (id: string, callback: (payload: TerminalExitPayload) => void) => () => void;
     };
     clipboard: {
+      hasImage: () => boolean;
       readText: () => string;
+      saveImage: (terminalId: string) => Promise<string | null>;
       writeText: (text: string) => void;
     };
     piSessions: {

@@ -469,6 +469,7 @@ button {
 .terminal-pane {
   display: flex;
   min-width: 0;
+  container-type: inline-size;
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
@@ -492,6 +493,7 @@ button {
   flex: 0 0 32px;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 0 6px 0 10px;
   border-bottom: 1px solid #202426;
   background: #131719;
@@ -505,8 +507,14 @@ button {
 .pane-title-wrap {
   display: flex;
   min-width: 0;
+  flex: 1 1 auto;
   align-items: center;
   gap: 7px;
+}
+
+.pane-header:has(.pane-telemetry) .pane-title-wrap {
+  max-width: 34%;
+  flex: 0 1 auto;
 }
 
 .pane-terminal-icon {
@@ -532,11 +540,112 @@ button {
   color: #abb2ad;
 }
 
+.pane-telemetry {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  overflow: hidden;
+  color: #6f7773;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pane-telemetry > span {
+  flex: 0 0 auto;
+}
+
+.pane-cwd,
+.pane-model {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pane-cwd {
+  flex: 1 1 150px !important;
+  color: #a6ada9;
+  text-align: right;
+}
+
+.pane-model {
+  max-width: 160px;
+  color: #858f89;
+}
+
+.pane-git,
+.pane-context,
+.pane-billing,
+.pane-thinking {
+  padding: 2px 4px;
+  border: 1px solid #29302d;
+  border-radius: 4px;
+  background: #101412;
+}
+
+.pane-git.dirty {
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #e9bd68;
+}
+
+.pane-context.warning {
+  color: #fbbf24;
+}
+
+.pane-context.danger {
+  color: #f87171;
+}
+
+.pane-thinking {
+  color: #a5b4fc;
+}
+
 .pane-actions {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
   gap: 1px;
+}
+
+@container (max-width: 760px) {
+  .pane-meta-tertiary {
+    display: none;
+  }
+
+  .pane-header:has(.pane-telemetry) .pane-title-wrap {
+    max-width: 28%;
+  }
+}
+
+@container (max-width: 620px) {
+  .pane-meta-secondary {
+    display: none;
+  }
+
+  .pane-title {
+    display: none;
+  }
+
+  .pane-header:has(.pane-telemetry) .pane-title-wrap {
+    max-width: none;
+  }
+
+  .pane-model {
+    max-width: 100px;
+  }
+}
+
+@container (max-width: 440px) {
+  .pane-model {
+    display: none;
+  }
+
+  .pane-cwd {
+    flex-basis: 80px !important;
+  }
 }
 
 .pane-close,
@@ -1462,6 +1571,26 @@ button:focus-visible {
 .pane-agent-state.error {
   color: #fca5a5;
   background: rgba(248, 113, 113, 0.1);
+}
+
+.pane-telemetry {
+  color: var(--pi-dim);
+}
+
+.pane-cwd {
+  color: var(--pi-text);
+}
+
+.pane-model {
+  color: var(--pi-muted);
+}
+
+.pane-git,
+.pane-context,
+.pane-billing,
+.pane-thinking {
+  border-color: var(--pi-border-muted);
+  background: var(--pi-page);
 }
 
 .terminal-host {

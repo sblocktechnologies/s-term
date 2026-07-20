@@ -13,7 +13,8 @@ function key(key, overrides = {}) {
 }
 
 test('maps Pi editor shortcuts to unambiguous terminal sequences', async () => {
-  const { getPiEditorSequence, PI_EDITOR_SEQUENCES } = await import('../src/terminal-keymap.js');
+  const { getPiEditorSequence, PI_EDITOR_SEQUENCES, PI_IMAGE_PASTE_SEQUENCE } = await import('../src/terminal-keymap.js');
+  assert.equal(PI_IMAGE_PASTE_SEQUENCE, '\x1b[118;6u');
   assert.equal(getPiEditorSequence(key('Enter', { shiftKey: true }), 'darwin'), PI_EDITOR_SEQUENCES.newLine);
   assert.equal(getPiEditorSequence(key('ArrowLeft', { metaKey: true }), 'darwin'), PI_EDITOR_SEQUENCES.lineStart);
   assert.equal(getPiEditorSequence(key('ArrowRight', { metaKey: true }), 'darwin'), PI_EDITOR_SEQUENCES.lineEnd);

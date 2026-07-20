@@ -101,3 +101,7 @@ S-Term source code is available under the MIT License. S-Block names and brand a
 - `Cmd + C/V` on macOS: Copy and paste
 - `Ctrl + Shift + C/V` on Windows and Linux: Copy and paste
 - `Cmd/Ctrl + K`: Clear terminal
+- `Shift + Enter` in Pi: Insert a newline
+- `Cmd + Left/Right` in Pi: Move to the start or end of the current line
+- `Cmd + Up/Down` in Pi: Move to the start or end of the entire draft
+- `Option + Left/Right` in Pi: Move backward or forward by one word

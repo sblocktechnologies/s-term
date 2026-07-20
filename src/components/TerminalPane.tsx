@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { CloseIcon, GridIcon, TerminalIcon } from '../icons';
 import { parseAgentSignal, STERM_OSC_ID, type AgentSignal, type AgentState } from '../agentProtocol';
+import { getPiEditorSequence } from '../terminal-keymap.js';
 
 interface TerminalPaneProps {
   id: string;
@@ -11,6 +12,7 @@ interface TerminalPaneProps {
   title: string;
   status: 'running' | 'exited';
   piSessionPath?: string;
+  piMode: boolean;
   agentStatus: AgentState;
   agentName?: string;
   active: boolean;
@@ -37,6 +39,7 @@ export default function TerminalPane({
   title,
   status,
   piSessionPath,
+  piMode,
   agentStatus,
   agentName,
   active,
@@ -54,6 +57,8 @@ export default function TerminalPane({
 }: TerminalPaneProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
+  const piModeRef = useRef(piMode);
+  piModeRef.current = piMode;
   const callbacksRef = useRef({ onTitleChange, onStatusChange, onAgentSignal });
   callbacksRef.current = { onTitleChange, onStatusChange, onAgentSignal };
 
@@ -159,6 +164,15 @@ export default function TerminalPane({
     });
 
     terminal.attachCustomKeyEventHandler((event) => {
+      const piEditorSequence = piModeRef.current
+        ? getPiEditorSequence(event, window.sterm.platform)
+        : null;
+      if (piEditorSequence) {
+        event.preventDefault();
+        if (event.type === 'keydown') window.sterm.terminal.write(id, piEditorSequence);
+        return false;
+      }
+
       if (event.type !== 'keydown') return true;
 
       const key = event.key.toLowerCase();

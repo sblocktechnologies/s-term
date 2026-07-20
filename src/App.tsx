@@ -519,6 +519,7 @@ export default function App() {
                 title={session.title}
                 status={session.status}
                 piSessionPath={session.launch?.piSessionPath}
+                piMode={session.launch?.type === 'pi-session' || session.agentName === 'pi'}
                 agentStatus={session.agentStatus}
                 agentName={agentDisplayName(session.agentName)}
                 active={session.id === activeId}

@@ -4,6 +4,12 @@ import IntegrationsModal from './components/IntegrationsModal';
 import TerminalLauncherModal from './components/TerminalLauncherModal';
 import { agentDisplayName, type AgentProtocolMessage, type AgentState, type AgentTelemetry } from './agentProtocol.js';
 import { newTerminalGridSlot, swapGridSlots } from './gridPlacement.js';
+import {
+  GRID_ACTIVITY_STATES,
+  gridWorkspaceSummary,
+  nextGridSessionWithStatus,
+  type GridActivityState,
+} from './workspaceSummary.js';
 import sblockLogo from './assets/sblock-logo.svg';
 import {
   AlertIcon,
@@ -52,6 +58,12 @@ interface InitialWorkspace {
 
 const WORKSPACE_KEY = 'sterm:workspace-v3';
 const GRID_POSITION_LABELS = ['Top left', 'Top right', 'Bottom left', 'Bottom right'] as const;
+const GRID_ACTIVITY_LABELS: Record<GridActivityState, string> = {
+  working: 'working',
+  attention: 'attention',
+  complete: 'complete',
+  error: 'error',
+};
 let terminalNumber = 0;
 
 function makeSession(name?: string, id?: string, launch?: SessionLaunch, cwd?: string): Session {
@@ -432,6 +444,19 @@ export default function App() {
     if (layout === 'focus') return new Map([[activeId, 0]]);
     return new Map(gridSlots.flatMap((id, index) => id ? [[id, index] as [string, number]] : []));
   }, [activeId, gridSlots, layout]);
+  const gridSummary = useMemo(
+    () => gridWorkspaceSummary(gridSlots, sessions),
+    [gridSlots, sessions],
+  );
+  const focusNextGridStatus = useCallback((status: GridActivityState) => {
+    const nextId = nextGridSessionWithStatus(
+      gridSlotsRef.current,
+      sessionsRef.current,
+      status,
+      activeIdRef.current,
+    );
+    if (nextId) selectSession(nextId);
+  }, [selectSession]);
 
   const activeSession = sessions.find((session) => session.id === activeId) ?? sessions[0];
   const workingCount = sessions.filter((session) => session.agentStatus === 'working').length;
@@ -527,8 +552,35 @@ export default function App() {
 
       <main className="main-content">
         <header className="toolbar drag-region">
-          <div className="workspace-title no-drag">
-            <span>{layout === 'focus' ? activeSession?.name || 'No terminal' : 'Grid workspace'}</span>
+          <div className={`workspace-title no-drag${layout === 'grid' ? ' grid-summary' : ''}`}>
+            {layout === 'focus' ? (
+              <span>{activeSession?.name || 'No terminal'}</span>
+            ) : (
+              <>
+                <span>Grid</span>
+                <i className="workspace-summary-separator">·</i>
+                <span>{gridSummary.paneCount === 0 ? 'Empty' : `${gridSummary.paneCount} ${gridSummary.paneCount === 1 ? 'pane' : 'panes'}`}</span>
+                {GRID_ACTIVITY_STATES.map((status) => {
+                  const count = gridSummary.counts[status];
+                  if (count === 0) return null;
+                  const label = GRID_ACTIVITY_LABELS[status];
+                  return (
+                    <button
+                      type="button"
+                      key={status}
+                      className={`workspace-status ${status}`}
+                      title={`Focus next ${label} pane`}
+                      aria-label={`${count} ${label}. Focus next ${label} pane`}
+                      onClick={() => focusNextGridStatus(status)}
+                    >
+                      <i />
+                      <strong>{count}</strong>
+                      <span>{label}</span>
+                    </button>
+                  );
+                })}
+              </>
+            )}
           </div>
           <div className="toolbar-actions no-drag">
             {layout === 'grid' && (

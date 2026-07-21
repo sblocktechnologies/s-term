@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.6
+
+### Added
+
+- The grid toolbar now summarizes assigned pane count and nonzero working, attention, complete, and error states
+- Clicking an activity count focuses the next matching pane and cycles through additional matches
+- Activity labels collapse to compact colored counts when horizontal space is limited
+
 ## 0.3.5
 
 ### Changed

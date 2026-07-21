@@ -393,6 +393,83 @@ button {
   white-space: nowrap;
 }
 
+.workspace-title.grid-summary {
+  flex: 1 1 auto;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.workspace-summary-separator {
+  color: #505755;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.workspace-status {
+  display: inline-flex;
+  height: 22px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: #838c87;
+  font: inherit;
+  font-size: 9px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.workspace-status:hover {
+  border-color: #303633;
+  background: #171b19;
+}
+
+.workspace-status > i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #59615e;
+}
+
+.workspace-status > strong {
+  font-weight: 650;
+}
+
+.workspace-status.working {
+  color: #9bc899;
+}
+
+.workspace-status.working > i {
+  background: #84c780;
+  animation: agent-pulse 1.35s infinite;
+}
+
+.workspace-status.attention,
+.workspace-status.attention > i {
+  color: #d6b85e;
+}
+
+.workspace-status.attention > i {
+  background: #d6b85e;
+}
+
+.workspace-status.complete {
+  color: #78ad76;
+}
+
+.workspace-status.complete > i {
+  background: #77b875;
+}
+
+.workspace-status.error {
+  color: #df8080;
+}
+
+.workspace-status.error > i {
+  background: #df6e6e;
+}
+
 .toolbar-actions {
   display: flex;
   align-items: center;
@@ -1377,6 +1454,10 @@ button {
 }
 
 @media (max-width: 1040px) {
+  .workspace-status > span {
+    display: none;
+  }
+
   .grid-slot-picker {
     gap: 1px;
   }

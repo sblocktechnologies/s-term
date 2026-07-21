@@ -77,6 +77,8 @@ When Pi is idle, S-Term aligns its inline editor border with the bottom of the p
 
 You can also drag a sidebar terminal directly onto a pane. Drag a grid pane by its header to swap it with another pane or move it into an empty position. Clicking a terminal already assigned to the grid focuses its existing position. The grid button in a pane header removes that terminal from the grid without closing its shell.
 
+The grid toolbar summarizes assigned panes and active agent states. Select a working, attention, complete, or error count to cycle focus through matching panes.
+
 ## Build and package
 
 ```bash

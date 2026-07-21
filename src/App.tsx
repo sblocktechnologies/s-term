@@ -528,8 +528,7 @@ export default function App() {
       <main className="main-content">
         <header className="toolbar drag-region">
           <div className="workspace-title no-drag">
-            <span>{layout === 'focus' ? activeSession?.name || 'No terminal' : `${GRID_POSITION_LABELS[selectedGridSlot]} grid position`}</span>
-            <ChevronIcon />
+            <span>{layout === 'focus' ? activeSession?.name || 'No terminal' : 'Grid workspace'}</span>
           </div>
           <div className="toolbar-actions no-drag">
             {layout === 'grid' && (

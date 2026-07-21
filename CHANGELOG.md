@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.5
+
+### Changed
+
+- Replaced the misleading grid-position dropdown-like label with a plain `Grid workspace` heading
+- Grid destination selection remains available through the four quadrant buttons and empty panes
+
+### Fixed
+
+- Pi viewport correction now waits for terminal redraws to settle before inspecting content
+- Stale scrollback exposed during a partial TUI redraw can no longer become an automatic scroll destination
+
 ## 0.3.4
 
 ### Added

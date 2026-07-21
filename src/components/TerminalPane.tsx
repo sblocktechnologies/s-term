@@ -123,7 +123,7 @@ export default function TerminalPane({
 
     let disposed = false;
     let fitFrame = 0;
-    let clampFrame = 0;
+    let clampTimer = 0;
     const terminal = new Terminal({
       allowProposedApi: false,
       altClickMovesCursor: true,
@@ -187,13 +187,13 @@ export default function TerminalPane({
     terminal.loadAddon(webLinksAddon);
 
     const clampPiViewport = () => {
-      cancelAnimationFrame(clampFrame);
-      clampFrame = requestAnimationFrame(() => {
+      window.clearTimeout(clampTimer);
+      clampTimer = window.setTimeout(() => {
         if (disposed || !piModeRef.current || agentStatusRef.current === 'working') return;
         const buffer = terminal.buffer.active;
         const target = contentAlignedViewport(buffer, terminal.rows);
         if (target !== null && buffer.viewportY > target) terminal.scrollToLine(target);
-      });
+      }, 50);
     };
     clampViewportRef.current = clampPiViewport;
 
@@ -330,7 +330,7 @@ export default function TerminalPane({
     return () => {
       disposed = true;
       cancelAnimationFrame(fitFrame);
-      cancelAnimationFrame(clampFrame);
+      window.clearTimeout(clampTimer);
       resizeObserver.disconnect();
       host.removeEventListener('contextmenu', showContextMenu);
       pasteRef.current = () => undefined;

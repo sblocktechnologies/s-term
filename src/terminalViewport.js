@@ -9,6 +9,9 @@ export function contentAlignedViewport(buffer, rows) {
     if (!line) continue;
     const text = line.translateToString(true);
     if (text.trim().length === 0) continue;
+    // If the active terminal area is blank, this is stale scrollback exposed
+    // during a TUI redraw. It must never be used as a clamp destination.
+    if (index < buffer.baseY) return null;
     return Math.min(buffer.baseY, Math.max(0, index - rows + 1));
   }
   return null;

@@ -393,12 +393,6 @@ button {
   white-space: nowrap;
 }
 
-.workspace-title svg {
-  width: 13px;
-  color: #505755;
-  transform: rotate(90deg);
-}
-
 .toolbar-actions {
   display: flex;
   align-items: center;
@@ -1522,10 +1516,6 @@ button:focus-visible {
 
 .workspace-title {
   color: var(--pi-text);
-}
-
-.workspace-title svg {
-  color: var(--pi-dim);
 }
 
 .layout-switcher,

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.7
+
+### Fixed
+
+- Pinned the upstream xterm.js build containing its synchronized-output viewport fix
+- Terminal DOM scrolling now waits for Pi's synchronized redraw to finish, eliminating line-count-dependent flicker while typing and streaming agent output
+- Removed continuous Pi viewport correction from PTY output and terminal scroll events
+- Blank-row correction now runs only after Pi settles, after a pane resize, or after intentional downward scrolling
+
 ## 0.3.6
 
 ### Added

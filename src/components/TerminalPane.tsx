@@ -193,7 +193,7 @@ export default function TerminalPane({
         const buffer = terminal.buffer.active;
         const target = contentAlignedViewport(buffer, terminal.rows);
         if (target !== null && buffer.viewportY > target) terminal.scrollToLine(target);
-      }, 50);
+      }, 100);
     };
     clampViewportRef.current = clampPiViewport;
 
@@ -226,7 +226,7 @@ export default function TerminalPane({
       });
     };
 
-    const stopData = window.sterm.terminal.onData(id, (data) => terminal.write(data, clampPiViewport));
+    const stopData = window.sterm.terminal.onData(id, (data) => terminal.write(data));
     const stopExit = window.sterm.terminal.onExit(id, ({ exitCode }) => {
       terminal.writeln(`\r\n\x1b[90mProcess exited with code ${exitCode}.\x1b[0m`);
       callbacksRef.current.onStatusChange('exited');
@@ -255,7 +255,6 @@ export default function TerminalPane({
       window.sterm.terminal.resize(id, cols, rows);
       clampPiViewport();
     });
-    const scrollDisposable = terminal.onScroll(clampPiViewport);
     const titleDisposable = terminal.onTitleChange((nextTitle) => {
       const cleaned = cleanTitle(nextTitle);
       if (cleaned) callbacksRef.current.onTitleChange(cleaned);
@@ -300,7 +299,11 @@ export default function TerminalPane({
       event.preventDefault();
       void window.sterm.terminal.showContextMenu(id, terminal.hasSelection());
     };
+    const clampAfterDownwardScroll = (event: WheelEvent) => {
+      if (event.deltaY > 0) clampPiViewport();
+    };
     host.addEventListener('contextmenu', showContextMenu);
+    host.addEventListener('wheel', clampAfterDownwardScroll, { passive: true });
 
     const resizeObserver = new ResizeObserver(fit);
     resizeObserver.observe(host);
@@ -333,13 +336,13 @@ export default function TerminalPane({
       window.clearTimeout(clampTimer);
       resizeObserver.disconnect();
       host.removeEventListener('contextmenu', showContextMenu);
+      host.removeEventListener('wheel', clampAfterDownwardScroll);
       pasteRef.current = () => undefined;
       clampViewportRef.current = () => undefined;
       stopData();
       stopExit();
       inputDisposable.dispose();
       resizeDisposable.dispose();
-      scrollDisposable.dispose();
       titleDisposable.dispose();
       oscDisposable.dispose();
       terminal.dispose();

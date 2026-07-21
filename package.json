@@ -1,6 +1,6 @@
 {
   "name": "sterm",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "An AI agent control plane with real terminals and resumable Pi sessions",
   "author": "S-Block Technologies",
   "license": "MIT",
@@ -29,7 +29,7 @@
   "dependencies": {
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-web-links": "^0.12.0",
-    "@xterm/xterm": "^6.0.0",
+    "@xterm/xterm": "6.1.0-beta.291",
     "node-pty": "^1.1.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0
+
+### Added
+
+- Claude Code pane-header telemetry for directory, Git state, model, reasoning effort, tokens, context, subscription, and cost
+- Codex pane-header telemetry for directory, Git state, active model, and configured reasoning effort
+- Safe Claude status-line bridging that restores an existing user status line on uninstall
+- Pi-specific viewport alignment that prevents scrolling into blank rows below the idle editor
+
+### Changed
+
+- Codex integration now uses the documented `SessionStart` hook for initial idle state
+- Runtime agent hooks now consume structured hook input through the shared telemetry helper
+- Integration runtime health checks now validate the telemetry helper alongside shell and PowerShell signals
+
 ## 0.2.1
 
 ### Changed

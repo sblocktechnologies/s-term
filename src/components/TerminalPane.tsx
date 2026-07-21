@@ -5,6 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { CloseIcon, GridIcon, GridPositionIcon, TerminalIcon } from '../icons';
 import { parseAgentSignal, STERM_OSC_ID, type AgentProtocolMessage, type AgentState, type AgentTelemetry } from '../agentProtocol.js';
 import { getPiEditorSequence, PI_IMAGE_PASTE_SEQUENCE } from '../terminal-keymap.js';
+import { contentAlignedViewport } from '../terminalViewport.js';
 
 interface TerminalPaneProps {
   id: string;
@@ -93,8 +94,11 @@ export default function TerminalPane({
   const hostRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const pasteRef = useRef<() => void>(() => undefined);
+  const clampViewportRef = useRef<() => void>(() => undefined);
   const piModeRef = useRef(piMode);
+  const agentStatusRef = useRef(agentStatus);
   piModeRef.current = piMode;
+  agentStatusRef.current = agentStatus;
   const callbacksRef = useRef({ onTitleChange, onStatusChange, onAgentSignal });
   callbacksRef.current = { onTitleChange, onStatusChange, onAgentSignal };
 
@@ -104,6 +108,7 @@ export default function TerminalPane({
 
     let disposed = false;
     let fitFrame = 0;
+    let clampFrame = 0;
     const terminal = new Terminal({
       allowProposedApi: false,
       altClickMovesCursor: true,
@@ -164,9 +169,29 @@ export default function TerminalPane({
     );
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(webLinksAddon);
+
+    const clampPiViewport = () => {
+      cancelAnimationFrame(clampFrame);
+      clampFrame = requestAnimationFrame(() => {
+        if (disposed || !piModeRef.current || agentStatusRef.current === 'working') return;
+        const buffer = terminal.buffer.active;
+        const target = contentAlignedViewport(buffer, terminal.rows);
+        if (target !== null && buffer.viewportY > target) terminal.scrollToLine(target);
+      });
+    };
+    clampViewportRef.current = clampPiViewport;
+
     const oscDisposable = terminal.parser.registerOscHandler(STERM_OSC_ID, (data) => {
       const signal = parseAgentSignal(data);
       if (!signal) return false;
+      if (signal.event === 'status' && signal.agent === 'pi') {
+        agentStatusRef.current = signal.state;
+        if (signal.state === 'working') {
+          requestAnimationFrame(() => terminal.scrollToBottom());
+        } else {
+          clampPiViewport();
+        }
+      }
       callbacksRef.current.onAgentSignal(signal);
       return true;
     });
@@ -185,7 +210,7 @@ export default function TerminalPane({
       });
     };
 
-    const stopData = window.sterm.terminal.onData(id, (data) => terminal.write(data));
+    const stopData = window.sterm.terminal.onData(id, (data) => terminal.write(data, clampPiViewport));
     const stopExit = window.sterm.terminal.onExit(id, ({ exitCode }) => {
       terminal.writeln(`\r\n\x1b[90mProcess exited with code ${exitCode}.\x1b[0m`);
       callbacksRef.current.onStatusChange('exited');
@@ -212,7 +237,9 @@ export default function TerminalPane({
     const inputDisposable = terminal.onData((data) => window.sterm.terminal.write(id, data));
     const resizeDisposable = terminal.onResize(({ cols, rows }) => {
       window.sterm.terminal.resize(id, cols, rows);
+      clampPiViewport();
     });
+    const scrollDisposable = terminal.onScroll(clampPiViewport);
     const titleDisposable = terminal.onTitleChange((nextTitle) => {
       const cleaned = cleanTitle(nextTitle);
       if (cleaned) callbacksRef.current.onTitleChange(cleaned);
@@ -285,13 +312,16 @@ export default function TerminalPane({
     return () => {
       disposed = true;
       cancelAnimationFrame(fitFrame);
+      cancelAnimationFrame(clampFrame);
       resizeObserver.disconnect();
       host.removeEventListener('contextmenu', showContextMenu);
       pasteRef.current = () => undefined;
+      clampViewportRef.current = () => undefined;
       stopData();
       stopExit();
       inputDisposable.dispose();
       resizeDisposable.dispose();
+      scrollDisposable.dispose();
       titleDisposable.dispose();
       oscDisposable.dispose();
       terminal.dispose();
@@ -304,9 +334,14 @@ export default function TerminalPane({
     const frame = requestAnimationFrame(() => {
       window.dispatchEvent(new Event('resize'));
       if (active) terminalRef.current?.focus();
+      clampViewportRef.current();
     });
     return () => cancelAnimationFrame(frame);
   }, [active, visible]);
+
+  useEffect(() => {
+    if (piMode && agentStatus !== 'working') clampViewportRef.current();
+  }, [agentStatus, piMode]);
 
   useEffect(() => {
     if (!active) return;

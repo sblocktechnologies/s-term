@@ -44,6 +44,8 @@ test('installs all integrations without replacing existing hooks', () => {
   assert.equal(claude.model, 'test-model');
   assert.ok(JSON.stringify(claude).includes('echo existing'));
   assert.ok(JSON.stringify(claude).includes(MARKER));
+  assert.ok(claude.statusLine.command.includes('telemetry.cjs'));
+  assert.ok(fs.existsSync(manager.paths.telemetry));
   if (process.platform !== 'win32') {
     assert.equal(fs.statSync(path.join(home, '.sterm')).mode & 0o777, 0o700);
     assert.equal(fs.statSync(manager.paths.signalSh).mode & 0o777, 0o700);
@@ -71,6 +73,27 @@ test('uninstall removes only S-Term-owned handlers', () => {
   const after = fs.readFileSync(manager.paths.codexConfig, 'utf8');
   assert.ok(after.includes('echo keep-me'));
   assert.ok(!after.includes(MARKER));
+});
+
+test('Claude status line is restored exactly on uninstall', () => {
+  const { home, manager } = fixture();
+  const claudeFile = path.join(home, '.claude', 'settings.json');
+  fs.mkdirSync(path.dirname(claudeFile), { recursive: true });
+  const originalStatusLine = {
+    type: 'command',
+    command: 'node ~/.claude/my-status.cjs',
+    refreshInterval: 12,
+  };
+  fs.writeFileSync(claudeFile, JSON.stringify({ statusLine: originalStatusLine }));
+
+  manager.install('claude-code');
+  const installed = JSON.parse(fs.readFileSync(claudeFile, 'utf8'));
+  assert.ok(installed.statusLine.command.includes(MARKER));
+
+  manager.uninstall('claude-code');
+  const uninstalled = JSON.parse(fs.readFileSync(claudeFile, 'utf8'));
+  assert.deepEqual(uninstalled.statusLine, originalStatusLine);
+  assert.deepEqual(uninstalled.hooks, {});
 });
 
 test('modified Pi extensions are preserved on uninstall', () => {
@@ -101,4 +124,5 @@ test('generates a self-contained PowerShell hook on Windows', () => {
   const config = fs.readFileSync(manager.paths.claudeConfig, 'utf8');
   assert.match(config, /powershell\.exe -NoProfile/);
   assert.match(config, /signal\.ps1/);
+  assert.match(config, /telemetry\.cjs/);
 });

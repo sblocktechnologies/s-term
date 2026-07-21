@@ -3,7 +3,7 @@ const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
 
-const VERSION = 1;
+const VERSION = 2;
 const MARKER = 'sterm-agent-status-v1';
 const SUPPORTED_INTEGRATIONS = ['pi', 'claude-code', 'codex'];
 
@@ -35,11 +35,11 @@ const CLAUDE_EVENTS = [
 ];
 
 const CODEX_EVENTS = [
+  ['SessionStart', 'idle'],
   ['UserPromptSubmit', 'working'],
   ['PermissionRequest', 'attention'],
   ['PostToolUse', 'working'],
   ['Stop', 'complete'],
-  ['SessionEnd', 'idle'],
 ];
 
 function ensureDirectory(directory) {
@@ -90,6 +90,16 @@ function isStermHandler(handler) {
     typeof handler === 'object' &&
     typeof handler.command === 'string' &&
     handler.command.includes(MARKER),
+  );
+}
+
+function isStermStatusLine(statusLine) {
+  return Boolean(
+    statusLine &&
+    typeof statusLine === 'object' &&
+    statusLine.type === 'command' &&
+    typeof statusLine.command === 'string' &&
+    statusLine.command.includes(MARKER),
   );
 }
 
@@ -170,8 +180,11 @@ function createIntegrationManager(options = {}) {
     codexConfig: path.join(env.CODEX_HOME || path.join(home, '.codex'), 'hooks.json'),
     signalShSource: path.join(sourceRoot, 'generic', 'signal.sh'),
     signalPs1Source: path.join(sourceRoot, 'generic', 'signal.ps1'),
+    telemetrySource: path.join(sourceRoot, 'generic', 'telemetry.cjs'),
     signalSh: path.join(runtimeDir, 'signal.sh'),
     signalPs1: path.join(runtimeDir, 'signal.ps1'),
+    telemetry: path.join(runtimeDir, 'telemetry.cjs'),
+    claudeStatusLineOriginal: path.join(runtimeDir, 'claude-statusline-original.json'),
     manifest: path.join(runtimeDir, 'manifest.json'),
   };
 
@@ -190,14 +203,17 @@ function createIntegrationManager(options = {}) {
     ensureDirectory(runtimeDir);
     fs.copyFileSync(paths.signalShSource, paths.signalSh);
     fs.copyFileSync(paths.signalPs1Source, paths.signalPs1);
+    fs.copyFileSync(paths.telemetrySource, paths.telemetry);
     fs.chmodSync(paths.signalSh, 0o700);
     fs.chmodSync(paths.signalPs1, 0o700);
+    fs.chmodSync(paths.telemetry, 0o600);
     writeJson(paths.manifest, {
       version: VERSION,
       installedAt: new Date().toISOString(),
       files: {
         'signal.sh': sha256(paths.signalSh),
         'signal.ps1': sha256(paths.signalPs1),
+        'telemetry.cjs': sha256(paths.telemetry),
       },
     });
   }
@@ -207,6 +223,51 @@ function createIntegrationManager(options = {}) {
       return `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ${powershellQuote(paths.signalPs1)} -State ${state} -Agent ${agent} # ${MARKER}`;
     }
     return `/bin/sh ${shellQuote(paths.signalSh)} ${state} ${agent} # ${MARKER}`;
+  }
+
+  function claudeStatusLineCommand() {
+    const script = platform === 'win32' ? paths.telemetry.replaceAll('\\', '/') : paths.telemetry;
+    const quoted = platform === 'win32' ? powershellQuote(script) : shellQuote(script);
+    return `node ${quoted} claude-statusline # ${MARKER}`;
+  }
+
+  function installClaudeStatusLine() {
+    const original = readJson(paths.claudeConfig, {});
+    const config = structuredClone(original);
+    const ownedStatusLine = isStermStatusLine(config.statusLine);
+    if (!ownedStatusLine || !fs.existsSync(paths.claudeStatusLineOriginal)) {
+      writeJson(paths.claudeStatusLineOriginal, {
+        version: VERSION,
+        hasOriginal: !ownedStatusLine && Object.prototype.hasOwnProperty.call(config, 'statusLine'),
+        original: !ownedStatusLine ? config.statusLine ?? null : null,
+      });
+    }
+    config.statusLine = {
+      type: 'command',
+      command: claudeStatusLineCommand(),
+      padding: 0,
+      refreshInterval: 5,
+    };
+    if (JSON.stringify(original) !== JSON.stringify(config)) {
+      backup(paths.claudeConfig, 'claude-settings.json');
+      writeJson(paths.claudeConfig, config);
+    }
+  }
+
+  function uninstallClaudeStatusLine() {
+    if (!fs.existsSync(paths.claudeConfig)) return;
+    const original = readJson(paths.claudeConfig, {});
+    const config = structuredClone(original);
+    if (isStermStatusLine(config.statusLine)) {
+      const saved = readJson(paths.claudeStatusLineOriginal, { hasOriginal: false });
+      if (saved.hasOriginal) config.statusLine = saved.original;
+      else delete config.statusLine;
+    }
+    if (JSON.stringify(original) !== JSON.stringify(config)) {
+      backup(paths.claudeConfig, 'claude-settings.json');
+      writeJson(paths.claudeConfig, config);
+    }
+    if (fs.existsSync(paths.claudeStatusLineOriginal)) fs.unlinkSync(paths.claudeStatusLineOriginal);
   }
 
   function installHookConfig(file, events, agent, label) {
@@ -259,13 +320,19 @@ function createIntegrationManager(options = {}) {
         const count = fs.existsSync(file) ? hookCount(readJson(file, {})) : 0;
         const shellSourceHash = sha256(paths.signalShSource);
         const powershellSourceHash = sha256(paths.signalPs1Source);
-        const runtimeHealthy = Boolean(shellSourceHash && powershellSourceHash) &&
+        const telemetrySourceHash = sha256(paths.telemetrySource);
+        const runtimeHealthy = Boolean(shellSourceHash && powershellSourceHash && telemetrySourceHash) &&
           shellSourceHash === sha256(paths.signalSh) &&
-          powershellSourceHash === sha256(paths.signalPs1);
+          powershellSourceHash === sha256(paths.signalPs1) &&
+          telemetrySourceHash === sha256(paths.telemetry);
         const events = id === 'claude-code' ? CLAUDE_EVENTS : CODEX_EVENTS;
         const agent = id === 'claude-code' ? 'claude' : 'codex';
-        installed = count === expected && hasExpectedHooks(readJson(file, {}), events, agent) && runtimeHealthy;
-        needsRepair = count > 0 && !installed;
+        const hookConfig = readJson(file, {});
+        const statusLineHealthy = id !== 'claude-code' || (
+          isStermStatusLine(hookConfig.statusLine) && fs.existsSync(paths.claudeStatusLineOriginal)
+        );
+        installed = count === expected && hasExpectedHooks(hookConfig, events, agent) && runtimeHealthy && statusLineHealthy;
+        needsRepair = (count > 0 || (id === 'claude-code' && isStermStatusLine(hookConfig.statusLine))) && !installed;
       }
     } catch (error) {
       needsRepair = true;
@@ -298,6 +365,7 @@ function createIntegrationManager(options = {}) {
       fs.chmodSync(paths.piDestination, 0o600);
     } else if (id === 'claude-code') {
       installHookConfig(paths.claudeConfig, CLAUDE_EVENTS, 'claude', 'claude-settings.json');
+      installClaudeStatusLine();
     } else {
       installHookConfig(paths.codexConfig, CODEX_EVENTS, 'codex', 'codex-hooks.json');
     }
@@ -316,6 +384,7 @@ function createIntegrationManager(options = {}) {
       }
     } else if (id === 'claude-code') {
       uninstallHookConfig(paths.claudeConfig, 'claude-settings.json');
+      uninstallClaudeStatusLine();
     } else {
       uninstallHookConfig(paths.codexConfig, 'codex-hooks.json');
     }
@@ -344,7 +413,7 @@ function createIntegrationManager(options = {}) {
   function doctor() {
     const integrations = list();
     const issues = [];
-    if (!fs.existsSync(paths.signalShSource) || !fs.existsSync(paths.signalPs1Source)) {
+    if (!fs.existsSync(paths.signalShSource) || !fs.existsSync(paths.signalPs1Source) || !fs.existsSync(paths.telemetrySource)) {
       issues.push('The repository signal helpers are missing.');
     }
     for (const integration of integrations) {

@@ -8,6 +8,12 @@ $Agent = $Agent -replace '[^A-Za-z0-9._-]', ''
 if ($Agent.Length -gt 32) { $Agent = $Agent.Substring(0, 32) }
 if (-not $Agent) { $Agent = 'generic' }
 
+$telemetry = Join-Path $PSScriptRoot 'telemetry.cjs'
+if ((Get-Command node -ErrorAction SilentlyContinue) -and (Test-Path $telemetry)) {
+  & node $telemetry hook $State $Agent
+  exit $LASTEXITCODE
+}
+
 $sequence = "$([char]27)]777;sterm;v=1;state=$State;agent=$Agent$([char]7)"
 try {
   $stream = [System.IO.File]::OpenWrite('CONOUT$')

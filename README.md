@@ -15,7 +15,7 @@ S-Term is a desktop terminal and AI agent control plane built with Electron, Rea
 - Unread completion badges and native background notifications
 - Repository-owned integrations for Pi, Claude Code, and Codex
 - Clipboard image attachments in Pi with secure temporary-path fallback in other terminals
-- Pi directory, Git, token, context, model, subscription, and reasoning telemetry in pane headers
+- Agent metadata in pane headers: full Pi and Claude telemetry plus available Codex model, directory, Git, and reasoning data
 - Native copy, paste, resize, and true color support
 
 ## Development
@@ -65,6 +65,8 @@ Select the `+` beside **Terminals** to open the terminal launcher. Choose **New 
 `Cmd/Ctrl + Shift + T` remains a shortcut for opening a normal terminal immediately.
 
 Open tabs are restored when S-Term is relaunched. Pi-backed tabs resume their saved Pi session. Normal terminal tabs reopen as fresh login shells because their original shell processes end with the application. Closing every tab leaves the next launch empty.
+
+When Pi is idle, S-Term aligns its inline editor border with the bottom of the pane and prevents scrolling into blank terminal rows. Upward scrollback remains available.
 
 ## Selecting grid terminals
 

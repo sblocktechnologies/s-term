@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.4
+
+### Added
+
+- `Cmd+Backspace` clears the complete current Pi message draft on macOS
+
+### Fixed
+
+- Disabled smooth scrolling in Pi panes so idle viewport correction no longer fights editor redraws and causes screen jitter
+- Other terminal types retain smooth scrolling
+
 ## 0.3.3
 
 ### Added

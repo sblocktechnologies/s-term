@@ -20,6 +20,7 @@ test('maps Pi editor shortcuts to unambiguous terminal sequences', async () => {
   assert.equal(getPiEditorSequence(key('ArrowRight', { metaKey: true }), 'darwin'), PI_EDITOR_SEQUENCES.lineEnd);
   assert.equal(getPiEditorSequence(key('ArrowUp', { metaKey: true }), 'darwin'), PI_EDITOR_SEQUENCES.messageStart);
   assert.equal(getPiEditorSequence(key('ArrowDown', { metaKey: true }), 'darwin'), PI_EDITOR_SEQUENCES.messageEnd);
+  assert.equal(getPiEditorSequence(key('Backspace', { metaKey: true }), 'darwin'), PI_EDITOR_SEQUENCES.clearDraft);
   assert.equal(getPiEditorSequence(key('ArrowLeft', { altKey: true }), 'darwin'), PI_EDITOR_SEQUENCES.wordLeft);
   assert.equal(getPiEditorSequence(key('ArrowRight', { altKey: true }), 'darwin'), PI_EDITOR_SEQUENCES.wordRight);
 });
@@ -29,6 +30,7 @@ test('does not intercept plain keys, mixed modifiers, or non-macOS terminals', a
   assert.equal(getPiEditorSequence(key('Enter'), 'darwin'), null);
   assert.equal(getPiEditorSequence(key('ArrowLeft'), 'darwin'), null);
   assert.equal(getPiEditorSequence(key('ArrowLeft', { altKey: true, shiftKey: true }), 'darwin'), null);
+  assert.equal(getPiEditorSequence(key('Backspace', { metaKey: true, shiftKey: true }), 'darwin'), null);
   assert.equal(getPiEditorSequence(key('Enter', { shiftKey: true }), 'linux'), '\x1b[13;2u');
   assert.equal(getPiEditorSequence(key('ArrowLeft', { altKey: true }), 'linux'), null);
 });

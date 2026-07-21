@@ -142,7 +142,8 @@ export default function TerminalPane({
       minimumContrastRatio: 4.5,
       rightClickSelectsWord: true,
       scrollback: 10000,
-      smoothScrollDuration: 80,
+      // Programmatic Pi viewport correction must be immediate or it can fight TUI redraws.
+      smoothScrollDuration: piMode ? 0 : 80,
       linkHandler: {
         activate: (_event, uri) => void window.sterm.openExternal(uri),
         hover: (_event, uri) => { host.title = uri; },

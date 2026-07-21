@@ -7,6 +7,7 @@ type State = "idle" | "working" | "attention" | "complete" | "error";
 type NavigableEditor = Component & {
   handleInput: (data: string) => void;
   onPasteImage?: () => void;
+  setText?: (text: string) => void;
   state?: {
     lines: string[];
     cursorLine: number;
@@ -47,6 +48,10 @@ function addWholeDraftNavigation(component: Component): Component {
   editor.handleInput = (data: string) => {
     if (isSTerm && matchesKey(data, "ctrl+shift+v") && editor.onPasteImage) {
       editor.onPasteImage();
+      return;
+    }
+    if (isSTerm && matchesKey(data, "ctrl+shift+backspace") && editor.setText) {
+      editor.setText("");
       return;
     }
 

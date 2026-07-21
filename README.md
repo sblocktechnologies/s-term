@@ -67,7 +67,7 @@ Select the `+` beside **Terminals** to open the terminal launcher. Choose **New 
 
 Open tabs are restored when S-Term is relaunched. Pi-backed tabs resume their saved Pi session. Normal terminal tabs reopen as fresh login shells because their original shell processes end with the application. Closing every tab leaves the next launch empty.
 
-When Pi is idle, S-Term aligns its inline editor border with the bottom of the pane and prevents scrolling into blank terminal rows. Upward scrollback remains available.
+When Pi is idle, S-Term aligns its inline editor border with the bottom of the pane and prevents scrolling into blank terminal rows. Upward scrollback remains available. Pi panes also support macOS editing conventions including `Cmd+Backspace` to clear the current draft.
 
 ## Selecting grid terminals
 

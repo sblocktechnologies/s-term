@@ -8,6 +8,7 @@ export const PI_EDITOR_SEQUENCES = Object.freeze({
   messageEnd: '\x1b[8^',
   wordLeft: '\x1b[1;3D',
   wordRight: '\x1b[1;3C',
+  clearDraft: '\x1b[127;6u',
 });
 
 /**
@@ -29,6 +30,7 @@ export function getPiEditorSequence(event, platform) {
     if (key === 'right') return PI_EDITOR_SEQUENCES.lineEnd;
     if (key === 'up') return PI_EDITOR_SEQUENCES.messageStart;
     if (key === 'down') return PI_EDITOR_SEQUENCES.messageEnd;
+    if (key === 'backspace') return PI_EDITOR_SEQUENCES.clearDraft;
   }
 
   if (event.altKey && !event.metaKey && !event.ctrlKey && !event.shiftKey) {

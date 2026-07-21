@@ -65,10 +65,11 @@ test('Claude status line emits rich S-Term telemetry without visible output', as
 });
 
 test('Claude lifecycle hooks do not overwrite rich status-line telemetry', async () => {
+  const cwd = os.tmpdir();
   const result = runTelemetry(['hook', 'complete', 'claude'], {
     session_id: 'claude-session',
-    cwd: '/tmp',
-  }, { cwd: '/tmp' });
+    cwd,
+  }, { cwd });
 
   assert.equal(result.status, 0);
   const messages = oscMessages(result.stderr);

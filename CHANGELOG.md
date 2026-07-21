@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2
+
+### Fixed
+
+- Made the Claude lifecycle regression test portable across Windows, macOS, and Linux
+
 ## 0.3.1
 
 ### Added

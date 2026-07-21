@@ -8,7 +8,7 @@ S-Term packages are generated for:
 - Windows as an NSIS installer
 - Linux as an AppImage
 
-A tagged release or manual run of `.github/workflows/build.yml` produces all three artifacts. Production distribution should add platform signing and macOS notarization credentials to the release environment.
+A tagged release or manual run of `.github/workflows/build.yml` produces all three artifacts. macOS release builds use hardened runtime, a Developer ID Application certificate, Apple notarization, and a stapled approval ticket. Credentials are read only from the repository's GitHub Actions secrets.
 
 ## Build locally
 
@@ -26,11 +26,11 @@ npm run package
 
 Packages are written to `release/`.
 
-## Unnotarized local builds
+## Local macOS builds
 
-Local macOS packages can be code-signed without being notarized. On another Mac, open the Applications folder, Control-click S-Term, choose **Open**, then confirm **Open**. This approval is normally needed only once.
+Local macOS packages can be code-signed without being notarized when notarization credentials are not present. On another Mac, Control-click S-Term and choose **Open** if Gatekeeper requests additional approval.
 
-Public downloads should be signed with a Developer ID Application certificate and notarized so this extra approval is unnecessary.
+Official GitHub release downloads are signed and notarized, so this workaround is not required.
 
 ## First run
 

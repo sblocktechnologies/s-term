@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.8
+
+### Changed
+
+- macOS release builds now use a Developer ID Application certificate and hardened runtime
+- Tagged macOS builds are submitted to Apple for notarization and have the approval ticket stapled before publication
+- Signing and notarization credentials are supplied exclusively through GitHub Actions secrets
+
 ## 0.3.7
 
 ### Fixed

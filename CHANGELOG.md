@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.3
+
+### Added
+
+- Grid pane headers are now drag handles for rearranging pane positions
+- Dropping onto an occupied pane swaps the two terminals
+- Dropping onto an empty grid position moves the terminal there
+- Sidebar terminal dragging remains unchanged
+
 ## 0.3.2
 
 ### Fixed

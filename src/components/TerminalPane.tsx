@@ -31,6 +31,7 @@ interface TerminalPaneProps {
   onAgentSignal: (signal: AgentProtocolMessage) => void;
   onFocusMode: () => void;
   onRemoveFromGrid?: () => void;
+  onGridPaneDrop?: (terminalId: string) => void;
   onTerminalDrop?: (terminalId: string) => void;
 }
 
@@ -102,6 +103,7 @@ export default function TerminalPane({
   onAgentSignal,
   onFocusMode,
   onRemoveFromGrid,
+  onGridPaneDrop,
   onTerminalDrop,
 }: TerminalPaneProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -385,17 +387,35 @@ export default function TerminalPane({
       style={{ order }}
       onMouseDown={onActivate}
       onDragOver={(event) => {
-        if (onTerminalDrop) event.preventDefault();
+        if (onGridPaneDrop || onTerminalDrop) event.preventDefault();
       }}
       onDrop={(event) => {
-        if (!onTerminalDrop) return;
+        if (!onGridPaneDrop && !onTerminalDrop) return;
         event.preventDefault();
+        const paneId = event.dataTransfer.getData('application/x-sterm-grid-pane');
+        if (paneId && onGridPaneDrop) {
+          onGridPaneDrop(paneId);
+          return;
+        }
         const terminalId = event.dataTransfer.getData('application/x-sterm-terminal');
-        if (terminalId) onTerminalDrop(terminalId);
+        if (terminalId) onTerminalDrop?.(terminalId);
       }}
       aria-label={name}
     >
-      <header className="pane-header" onDoubleClick={onFocusMode}>
+      <header
+        className="pane-header"
+        draggable={Boolean(onGridPaneDrop)}
+        title={onGridPaneDrop ? 'Drag to move this pane' : undefined}
+        onDoubleClick={onFocusMode}
+        onDragStart={(event) => {
+          if (!onGridPaneDrop || (event.target as HTMLElement).closest('button')) {
+            event.preventDefault();
+            return;
+          }
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('application/x-sterm-grid-pane', id);
+        }}
+      >
         <div className="pane-title-wrap">
           {gridSlot ? (
             <span className="pane-slot-position" title={`${GRID_POSITION_LABELS[gridSlot - 1]} grid position`}>

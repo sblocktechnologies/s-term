@@ -3,7 +3,7 @@ import TerminalPane from './components/TerminalPane';
 import IntegrationsModal from './components/IntegrationsModal';
 import TerminalLauncherModal from './components/TerminalLauncherModal';
 import { agentDisplayName, type AgentProtocolMessage, type AgentState, type AgentTelemetry } from './agentProtocol.js';
-import { newTerminalGridSlot } from './gridPlacement.js';
+import { newTerminalGridSlot, swapGridSlots } from './gridPlacement.js';
 import sblockLogo from './assets/sblock-logo.svg';
 import {
   AlertIcon,
@@ -226,6 +226,19 @@ export default function App() {
     setActiveId(id);
     markRead(id);
   }, [markRead, placeInGrid]);
+
+  const swapGridPane = useCallback((sourceId: string, targetSlot: number) => {
+    const next = swapGridSlots(gridSlotsRef.current, sourceId, targetSlot);
+    commitGridSlots(next);
+    const sourceSlot = next.indexOf(sourceId);
+    if (sourceSlot >= 0) {
+      selectedGridSlotRef.current = sourceSlot;
+      setSelectedGridSlot(sourceSlot);
+      activeIdRef.current = sourceId;
+      setActiveId(sourceId);
+      markRead(sourceId);
+    }
+  }, [commitGridSlots, markRead]);
 
   const addTerminalSession = useCallback((session: Session) => {
     const next = [...sessionsRef.current, session];
@@ -619,6 +632,9 @@ export default function App() {
                     }
                   }
                 } : undefined}
+                onGridPaneDrop={layout === 'grid' && order !== undefined ? (terminalId) => {
+                  swapGridPane(terminalId, order);
+                } : undefined}
                 onTerminalDrop={layout === 'grid' && order !== undefined ? (terminalId) => {
                   placeInGrid(terminalId, order);
                   selectSession(terminalId);
@@ -640,6 +656,11 @@ export default function App() {
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault();
+                const paneId = event.dataTransfer.getData('application/x-sterm-grid-pane');
+                if (paneId) {
+                  swapGridPane(paneId, index);
+                  return;
+                }
                 const terminalIdToPlace = event.dataTransfer.getData('application/x-sterm-terminal');
                 if (terminalIdToPlace) {
                   placeInGrid(terminalIdToPlace, index);

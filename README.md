@@ -75,7 +75,7 @@ When Pi is idle, S-Term aligns its inline editor border with the bottom of the p
 2. Select one of the numbered slots in the toolbar or click an empty pane.
 3. Click a terminal in the sidebar to place it in that slot.
 
-You can also drag a sidebar terminal directly onto a pane. Clicking a terminal already assigned to the grid focuses its existing slot. The grid button in a pane header removes that terminal from the grid without closing its shell.
+You can also drag a sidebar terminal directly onto a pane. Drag a grid pane by its header to swap it with another pane or move it into an empty position. Clicking a terminal already assigned to the grid focuses its existing position. The grid button in a pane header removes that terminal from the grid without closing its shell.
 
 ## Build and package
 

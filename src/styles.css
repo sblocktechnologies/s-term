@@ -504,6 +504,18 @@ button {
   background: #151a17;
 }
 
+.pane-header[draggable="true"] {
+  cursor: grab;
+}
+
+.pane-header[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.pane-header button {
+  cursor: pointer;
+}
+
 .pane-title-wrap {
   display: flex;
   min-width: 0;

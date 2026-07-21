@@ -64,6 +64,22 @@ test('Claude status line emits rich S-Term telemetry without visible output', as
   assert.equal(message.contextPercent, 21);
 });
 
+test('Claude lifecycle hooks do not overwrite rich status-line telemetry', async () => {
+  const result = runTelemetry(['hook', 'complete', 'claude'], {
+    session_id: 'claude-session',
+    cwd: '/tmp',
+  }, { cwd: '/tmp' });
+
+  assert.equal(result.status, 0);
+  const messages = oscMessages(result.stderr);
+  assert.equal(messages.length, 1);
+  const { parseAgentSignal } = await import('../src/agentProtocol.js');
+  const message = parseAgentSignal(messages[0]);
+  assert.equal(message.event, 'status');
+  assert.equal(message.agent, 'claude');
+  assert.equal(message.state, 'complete');
+});
+
 test('Codex hooks emit lifecycle status and available header metadata', async (t) => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'sterm-codex-telemetry-'));
   t.after(() => fs.rmSync(home, { recursive: true, force: true }));

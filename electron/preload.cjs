@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('sterm', {
     write: (id, data) => ipcRenderer.send('terminal:write', { id, data }),
     resize: (id, cols, rows) => ipcRenderer.send('terminal:resize', { id, cols, rows }),
     kill: (id) => ipcRenderer.invoke('terminal:kill', id),
+    getCwd: (id) => ipcRenderer.invoke('terminal:cwd', id),
     showContextMenu: (id, canCopy) => ipcRenderer.invoke('terminal:context-menu', { id, canCopy }),
     onData: (id, callback) => {
       const listener = (_event, payload) => {

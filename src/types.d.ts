@@ -52,10 +52,11 @@ interface Window {
         rows: number;
         cwd?: string;
         piSessionPath?: string;
-      }) => Promise<{ pid: number }>;
+      }) => Promise<{ pid: number; cwd: string }>;
       write: (id: string, data: string) => void;
       resize: (id: string, cols: number, rows: number) => void;
       kill: (id: string) => Promise<void>;
+      getCwd: (id: string) => Promise<string | null>;
       showContextMenu: (id: string, canCopy: boolean) => Promise<void>;
       onData: (id: string, callback: (data: string) => void) => () => void;
       onExit: (id: string, callback: (payload: TerminalExitPayload) => void) => () => void;

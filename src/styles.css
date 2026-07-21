@@ -649,25 +649,32 @@ button {
 }
 
 .pane-close,
-.pane-grid-remove {
+.pane-grid-remove,
+.pane-new-terminal {
   width: 23px;
   height: 23px;
   opacity: 0;
 }
 
 .terminal-pane:hover .pane-close,
-.terminal-pane:hover .pane-grid-remove {
+.terminal-pane:hover .pane-grid-remove,
+.terminal-pane:hover .pane-new-terminal {
   opacity: 1;
 }
 
 .pane-close svg,
-.pane-grid-remove svg {
+.pane-grid-remove svg,
+.pane-new-terminal svg {
   width: 13px;
   height: 13px;
 }
 
 .pane-grid-remove:hover {
   color: #dabd68;
+}
+
+.pane-new-terminal:hover {
+  color: #86aefb;
 }
 
 .terminal-host {

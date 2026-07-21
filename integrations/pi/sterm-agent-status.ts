@@ -1,7 +1,6 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import { CustomEditor, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { matchesKey, type Component } from "@earendil-works/pi-tui";
-import path from "node:path";
 
 type State = "idle" | "working" | "attention" | "complete" | "error";
 
@@ -38,16 +37,6 @@ function signal(state: State, message?: string) {
     ["agent", "pi"],
     ["message", message?.slice(0, 160)],
   ]);
-}
-
-function displayCwd(cwd: string) {
-  const home = process.env.HOME || process.env.USERPROFILE;
-  if (!home) return cwd;
-  const resolvedCwd = path.resolve(cwd);
-  const resolvedHome = path.resolve(home);
-  if (resolvedCwd === resolvedHome) return "~";
-  if (resolvedCwd.startsWith(`${resolvedHome}${path.sep}`)) return `~${resolvedCwd.slice(resolvedHome.length)}`;
-  return cwd;
 }
 
 function addWholeDraftNavigation(component: Component): Component {
@@ -140,7 +129,7 @@ export default function (pi: ExtensionAPI) {
       const fields: Array<[string, string | number | boolean | undefined]> = [
         ["event", "telemetry"],
         ["agent", "pi"],
-        ["cwd", displayCwd(ctx.cwd)],
+        ["cwd", ctx.cwd],
         ["branch", getGitBranch() || undefined],
         ["dirty", gitDirty],
         ["provider", model?.provider],

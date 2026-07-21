@@ -8,6 +8,7 @@ S-Term is a desktop terminal and AI agent control plane built with Electron, Rea
 - Focus mode for one terminal
 - Four-slot grid mode
 - Explicit grid tab selection and drag-and-drop placement
+- One-click pane duplication into the same working directory
 - Restores open terminal tabs after relaunch and stays empty when all tabs were closed
 - Agent working, attention, completed, and error indicators
 - Searchable local Pi session launcher and one-click resume

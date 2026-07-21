@@ -3,6 +3,7 @@ import TerminalPane from './components/TerminalPane';
 import IntegrationsModal from './components/IntegrationsModal';
 import TerminalLauncherModal from './components/TerminalLauncherModal';
 import { agentDisplayName, type AgentProtocolMessage, type AgentState, type AgentTelemetry } from './agentProtocol.js';
+import { newTerminalGridSlot } from './gridPlacement.js';
 import sblockLogo from './assets/sblock-logo.svg';
 import {
   AlertIcon,
@@ -35,6 +36,7 @@ interface Session {
   agentName?: string;
   agentMessage?: string;
   telemetry?: AgentTelemetry;
+  cwd?: string;
   agentStartedAt?: number;
   agentUpdatedAt?: number;
   unread: boolean;
@@ -52,7 +54,7 @@ const WORKSPACE_KEY = 'sterm:workspace-v3';
 const GRID_POSITION_LABELS = ['Top left', 'Top right', 'Bottom left', 'Bottom right'] as const;
 let terminalNumber = 0;
 
-function makeSession(name?: string, id?: string, launch?: SessionLaunch): Session {
+function makeSession(name?: string, id?: string, launch?: SessionLaunch, cwd?: string): Session {
   terminalNumber += 1;
   const sessionName = name || `Terminal ${terminalNumber}`;
   const numberedName = /^Terminal (\d+)$/.exec(sessionName);
@@ -68,6 +70,7 @@ function makeSession(name?: string, id?: string, launch?: SessionLaunch): Sessio
     agentStatus: 'idle',
     unread: false,
     launch,
+    cwd,
   };
 }
 
@@ -84,7 +87,7 @@ function loadWorkspace(): InitialWorkspace {
   const workspace = defaultWorkspace();
   try {
     const value = JSON.parse(localStorage.getItem(WORKSPACE_KEY) || 'null') as {
-      sessions?: Array<{ id?: unknown; name?: unknown; launch?: unknown }>;
+      sessions?: Array<{ id?: unknown; name?: unknown; launch?: unknown; cwd?: unknown }>;
       activeId?: unknown;
       layout?: unknown;
       gridSlots?: unknown[];
@@ -109,7 +112,8 @@ function loadWorkspace(): InitialWorkspace {
             piSessionId: rawLaunch.piSessionId.slice(0, 80),
           }
         : undefined;
-      return [makeSession(name || undefined, id, launch)];
+      const cwd = typeof item.cwd === 'string' && item.cwd.length <= 4096 ? item.cwd : undefined;
+      return [makeSession(name || undefined, id, launch, cwd)];
     });
     if (sessions.length === 0) return workspace;
 
@@ -243,8 +247,39 @@ export default function App() {
       type: 'pi-session',
       piSessionPath: piSession.path,
       piSessionId: piSession.id,
-    }));
+    }, piSession.cwd));
   }, [addTerminalSession]);
+
+  const newTerminalInPane = useCallback(async (sourceId: string) => {
+    const sourceBeforeLookup = sessionsRef.current.find((session) => session.id === sourceId);
+    if (!sourceBeforeLookup) return;
+
+    let shellCwd: string | null = null;
+    try {
+      shellCwd = await window.sterm.terminal.getCwd(sourceId);
+    } catch {
+      // The source shell may have exited while the request was in flight.
+    }
+
+    const source = sessionsRef.current.find((session) => session.id === sourceId);
+    if (!source) return;
+    const cwd = source.telemetry?.cwd || shellCwd || source.cwd;
+    const session = makeSession(undefined, undefined, undefined, cwd);
+    const next = [...sessionsRef.current, session];
+    sessionsRef.current = next;
+    setSessions(next);
+    activeIdRef.current = session.id;
+    setActiveId(session.id);
+
+    if (layoutRef.current === 'grid') {
+      const targetSlot = newTerminalGridSlot(
+        gridSlotsRef.current,
+        sourceId,
+        selectedGridSlotRef.current,
+      );
+      placeInGrid(session.id, targetSlot);
+    }
+  }, [placeInGrid]);
 
   const closeTerminal = useCallback((id: string) => {
     const current = sessionsRef.current;
@@ -266,7 +301,7 @@ export default function App() {
     }
   }, [commitGridSlots]);
 
-  const updateSession = useCallback((id: string, patch: Partial<Pick<Session, 'title' | 'status' | 'telemetry' | 'agentStatus'>>) => {
+  const updateSession = useCallback((id: string, patch: Partial<Pick<Session, 'title' | 'status' | 'telemetry' | 'agentStatus' | 'cwd'>>) => {
     setSessions((current) => {
       const session = current.find((item) => item.id === id);
       if (!session || Object.entries(patch).every(([key, value]) => session[key as keyof Session] === value)) {
@@ -282,7 +317,7 @@ export default function App() {
     if (signal.event === 'telemetry') {
       setSessions((current) => {
         const next = current.map((session) => session.id === id
-          ? { ...session, agentName: signal.agent, telemetry: signal }
+          ? { ...session, agentName: signal.agent, telemetry: signal, cwd: signal.cwd || session.cwd }
           : session);
         sessionsRef.current = next;
         return next;
@@ -362,7 +397,7 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem(WORKSPACE_KEY, JSON.stringify({
-      sessions: sessions.map(({ id, name, launch }) => ({ id, name, launch })),
+      sessions: sessions.map(({ id, name, launch, cwd }) => ({ id, name, launch, cwd })),
       activeId,
       layout,
       gridSlots,
@@ -538,6 +573,7 @@ export default function App() {
                 title={session.title}
                 status={session.status}
                 piSessionPath={session.launch?.piSessionPath}
+                initialCwd={session.cwd}
                 piMode={session.launch?.type === 'pi-session' || session.agentName === 'pi'}
                 agentStatus={session.agentStatus}
                 agentName={agentDisplayName(session.agentName)}
@@ -561,6 +597,8 @@ export default function App() {
                   status,
                   ...(status === 'exited' ? { telemetry: undefined, agentStatus: 'idle' as const } : {}),
                 })}
+                onCwdChange={(cwd) => updateSession(session.id, { cwd })}
+                onNewTerminalHere={() => void newTerminalInPane(session.id)}
                 onAgentSignal={(signal) => handleAgentSignal(session.id, signal)}
                 onFocusMode={() => {
                   activeIdRef.current = session.id;

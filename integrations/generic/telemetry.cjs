@@ -68,17 +68,6 @@ function signal(state, agent) {
   emit([['state', state], ['agent', cleanAgent(agent)]]);
 }
 
-function displayCwd(cwd) {
-  if (!cwd) return undefined;
-  const home = process.env.HOME || process.env.USERPROFILE;
-  if (!home) return cwd;
-  const resolvedCwd = path.resolve(cwd);
-  const resolvedHome = path.resolve(home);
-  if (resolvedCwd === resolvedHome) return '~';
-  if (resolvedCwd.startsWith(`${resolvedHome}${path.sep}`)) return `~${resolvedCwd.slice(resolvedHome.length)}`;
-  return cwd;
-}
-
 function gitCacheFile(payload, cwd) {
   const identity = `${payload.session_id || ''}\0${cwd}`;
   const digest = crypto.createHash('sha256').update(identity).digest('hex').slice(0, 24);
@@ -184,7 +173,7 @@ function emitTelemetry(payload, agent) {
   emit([
     ['event', 'telemetry'],
     ['agent', cleanAgent(agent)],
-    ['cwd', displayCwd(cwd)],
+    ['cwd', cwd],
     ['branch', git.branch],
     ['dirty', git.dirty],
     ['provider', agent === 'claude' ? 'anthropic' : agent === 'codex' ? 'openai' : undefined],
@@ -232,5 +221,7 @@ if (mode === 'claude-statusline') {
 } else if (mode === 'hook') {
   const agent = cleanAgent(requestedAgent);
   signal(state, agent);
-  emitTelemetry(payload, agent);
+  // Claude's status-line payload is richer than its lifecycle hook payload.
+  // Let hooks update lifecycle only so they cannot erase model and token data.
+  if (agent !== 'claude') emitTelemetry(payload, agent);
 }

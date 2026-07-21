@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
-import { CloseIcon, GridIcon, GridPositionIcon, TerminalIcon } from '../icons';
+import { CloseIcon, GridIcon, GridPositionIcon, PlusIcon, TerminalIcon } from '../icons';
 import { parseAgentSignal, STERM_OSC_ID, type AgentProtocolMessage, type AgentState, type AgentTelemetry } from '../agentProtocol.js';
 import { getPiEditorSequence, PI_IMAGE_PASTE_SEQUENCE } from '../terminal-keymap.js';
 import { contentAlignedViewport } from '../terminalViewport.js';
@@ -13,6 +13,7 @@ interface TerminalPaneProps {
   title: string;
   status: 'running' | 'exited';
   piSessionPath?: string;
+  initialCwd?: string;
   piMode: boolean;
   agentStatus: AgentState;
   agentName?: string;
@@ -25,6 +26,8 @@ interface TerminalPaneProps {
   onClose: () => void;
   onTitleChange: (title: string) => void;
   onStatusChange: (status: 'running' | 'exited') => void;
+  onCwdChange: (cwd: string) => void;
+  onNewTerminalHere: () => void;
   onAgentSignal: (signal: AgentProtocolMessage) => void;
   onFocusMode: () => void;
   onRemoveFromGrid?: () => void;
@@ -35,6 +38,13 @@ const GRID_POSITION_LABELS = ['Top left', 'Top right', 'Bottom left', 'Bottom ri
 
 function cleanTitle(title: string) {
   return title.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 90);
+}
+
+function displayCwd(cwd: string) {
+  const unixHome = cwd.match(/^\/(?:Users|home)\/[^/]+/)?.[0];
+  if (unixHome) return `~${cwd.slice(unixHome.length)}`;
+  const windowsHome = cwd.match(/^[A-Za-z]:\\Users\\[^\\]+/i)?.[0];
+  return windowsHome ? `~${cwd.slice(windowsHome.length)}` : cwd;
 }
 
 function formatTokens(count: number | undefined) {
@@ -74,6 +84,7 @@ export default function TerminalPane({
   title,
   status,
   piSessionPath,
+  initialCwd,
   piMode,
   agentStatus,
   agentName,
@@ -86,6 +97,8 @@ export default function TerminalPane({
   onClose,
   onTitleChange,
   onStatusChange,
+  onCwdChange,
+  onNewTerminalHere,
   onAgentSignal,
   onFocusMode,
   onRemoveFromGrid,
@@ -99,8 +112,8 @@ export default function TerminalPane({
   const agentStatusRef = useRef(agentStatus);
   piModeRef.current = piMode;
   agentStatusRef.current = agentStatus;
-  const callbacksRef = useRef({ onTitleChange, onStatusChange, onAgentSignal });
-  callbacksRef.current = { onTitleChange, onStatusChange, onAgentSignal };
+  const callbacksRef = useRef({ onTitleChange, onStatusChange, onCwdChange, onAgentSignal });
+  callbacksRef.current = { onTitleChange, onStatusChange, onCwdChange, onAgentSignal };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -294,12 +307,14 @@ export default function TerminalPane({
       if (disposed) return;
       fitAddon.fit();
       try {
-        await window.sterm.terminal.create({
+        const created = await window.sterm.terminal.create({
           id,
           cols: terminal.cols,
           rows: terminal.rows,
+          cwd: initialCwd,
           piSessionPath,
         });
+        callbacksRef.current.onCwdChange(created.cwd);
         callbacksRef.current.onStatusChange('running');
         window.sterm.terminal.resize(id, terminal.cols, terminal.rows);
       } catch (error) {
@@ -397,7 +412,7 @@ export default function TerminalPane({
         </div>
         {telemetry && (
           <div className="pane-telemetry" title={telemetryTitle(telemetry)}>
-            {telemetry.cwd && <span className="pane-cwd">{telemetry.cwd}</span>}
+            {telemetry.cwd && <span className="pane-cwd">{displayCwd(telemetry.cwd)}</span>}
             {telemetry.gitBranch && (
               <span className={`pane-git${telemetry.gitDirty ? ' dirty' : ''}`}>
                 {telemetry.gitBranch}{telemetry.gitDirty ? '*' : ''}
@@ -443,6 +458,18 @@ export default function TerminalPane({
               <GridIcon />
             </button>
           )}
+          <button
+            className="icon-button pane-new-terminal"
+            type="button"
+            title="New terminal in this folder"
+            aria-label="New terminal in this folder"
+            onClick={(event) => {
+              event.stopPropagation();
+              onNewTerminalHere();
+            }}
+          >
+            <PlusIcon />
+          </button>
           <button
             className="icon-button pane-close"
             type="button"

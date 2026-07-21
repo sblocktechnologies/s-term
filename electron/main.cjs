@@ -2,6 +2,7 @@ const { app, BrowserWindow, clipboard, ipcMain, Menu, shell, Notification } = re
 const path = require('node:path');
 const os = require('node:os');
 const fs = require('node:fs');
+const { execFileSync } = require('node:child_process');
 const pty = require('node-pty');
 const { saveClipboardImage } = require('./clipboard-images.cjs');
 const { createIntegrationManager } = require('./integration-manager.cjs');
@@ -79,6 +80,26 @@ function killOwnerTerminals(ownerId) {
   }
 }
 
+function terminalCwd(entry) {
+  try {
+    let cwd;
+    if (process.platform === 'linux') {
+      cwd = fs.readlinkSync(`/proc/${entry.process.pid}/cwd`);
+    } else if (process.platform === 'darwin') {
+      const output = execFileSync('/usr/sbin/lsof', ['-a', '-p', String(entry.process.pid), '-d', 'cwd', '-Fn'], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+        timeout: 1500,
+      });
+      cwd = output.split(/\r?\n/).find((line) => line.startsWith('n'))?.slice(1);
+    }
+    if (cwd && fs.existsSync(cwd) && fs.statSync(cwd).isDirectory()) return cwd;
+  } catch {
+    // Fall back to the terminal's launch directory.
+  }
+  return entry.cwd;
+}
+
 function registerIpc() {
   ipcMain.handle('terminal:create', (event, options = {}) => {
     const terminalId = options.id;
@@ -88,7 +109,7 @@ function registerIpc() {
     const key = terminalKey(ownerId, terminalId);
     const existing = terminals.get(key);
     if (existing) {
-      return { pid: existing.process.pid };
+      return { pid: existing.process.pid, cwd: terminalCwd(existing) };
     }
 
     const shellConfig = getShell();
@@ -114,7 +135,7 @@ function registerIpc() {
       },
     });
 
-    terminals.set(key, { process: child, ownerId, terminalId, tempImages: new Set() });
+    terminals.set(key, { process: child, ownerId, terminalId, cwd, tempImages: new Set() });
 
     child.onData((data) => {
       if (!event.sender.isDestroyed()) {
@@ -137,7 +158,7 @@ function registerIpc() {
       }, 120);
     }
 
-    return { pid: child.pid };
+    return { pid: child.pid, cwd };
   });
 
   ipcMain.on('terminal:write', (event, payload = {}) => {
@@ -164,6 +185,12 @@ function registerIpc() {
   ipcMain.handle('terminal:kill', (event, terminalId) => {
     if (!isValidTerminalId(terminalId)) return;
     killTerminal(terminalKey(event.sender.id, terminalId));
+  });
+
+  ipcMain.handle('terminal:cwd', (event, terminalId) => {
+    if (!isValidTerminalId(terminalId)) return null;
+    const entry = terminals.get(terminalKey(event.sender.id, terminalId));
+    return entry ? terminalCwd(entry) : null;
   });
 
   ipcMain.handle('clipboard:save-image', (event, terminalId) => {

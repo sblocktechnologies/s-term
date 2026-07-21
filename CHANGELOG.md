@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.1
+
+### Added
+
+- Added a pane-header `+` action that creates a terminal in the same working directory
+- New terminals use the first empty grid position, or replace the clicked pane when all four positions are occupied
+- Previous terminals remain open in the sidebar when their full-grid pane is replaced
+
+### Fixed
+
+- Prevented sparse Claude lifecycle-hook payloads from replacing rich status-line telemetry
+- Claude pane headers now retain model, reasoning, token, context, Git, subscription, and cost fields after a turn completes
+- Agent telemetry now retains absolute working directories while displaying compact home-relative paths
+
 ## 0.3.0
 
 ### Added

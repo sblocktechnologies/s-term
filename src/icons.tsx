@@ -51,6 +51,31 @@ export function GridIcon(props: IconProps) {
   );
 }
 
+export function GridPositionIcon({ position, ...props }: IconProps & { position: number }) {
+  const cells = [
+    { x: 3.5, y: 3.5 },
+    { x: 13.5, y: 3.5 },
+    { x: 3.5, y: 13.5 },
+    { x: 13.5, y: 13.5 },
+  ];
+  return (
+    <svg {...defaults} {...props}>
+      {cells.map((cell, index) => (
+        <rect
+          key={index}
+          x={cell.x}
+          y={cell.y}
+          width="7"
+          height="7"
+          rx="1.4"
+          fill={index === position ? 'currentColor' : 'none'}
+          opacity={index === position ? 1 : 0.38}
+        />
+      ))}
+    </svg>
+  );
+}
+
 export function CloseIcon(props: IconProps) {
   return (
     <svg {...defaults} {...props}>

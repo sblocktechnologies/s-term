@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1
+
+### Changed
+
+- Replaced numeric grid-slot labels with visual 2×2 position icons
+- Added explicit top-left, top-right, bottom-left, and bottom-right accessibility labels
+- Applied position icons consistently in the toolbar, pane headers, sidebar badges, and empty grid panes
+
 ## 0.2.0
 
 ### Added

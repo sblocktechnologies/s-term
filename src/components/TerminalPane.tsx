@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
-import { CloseIcon, GridIcon, TerminalIcon } from '../icons';
+import { CloseIcon, GridIcon, GridPositionIcon, TerminalIcon } from '../icons';
 import { parseAgentSignal, STERM_OSC_ID, type AgentProtocolMessage, type AgentState, type AgentTelemetry } from '../agentProtocol.js';
 import { getPiEditorSequence, PI_IMAGE_PASTE_SEQUENCE } from '../terminal-keymap.js';
 
@@ -29,6 +29,8 @@ interface TerminalPaneProps {
   onRemoveFromGrid?: () => void;
   onTerminalDrop?: (terminalId: string) => void;
 }
+
+const GRID_POSITION_LABELS = ['Top left', 'Top right', 'Bottom left', 'Bottom right'] as const;
 
 function cleanTitle(title: string) {
   return title.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 90);
@@ -345,7 +347,11 @@ export default function TerminalPane({
     >
       <header className="pane-header" onDoubleClick={onFocusMode}>
         <div className="pane-title-wrap">
-          {gridSlot ? <span className="pane-slot-number">{gridSlot}</span> : <TerminalIcon className="pane-terminal-icon" />}
+          {gridSlot ? (
+            <span className="pane-slot-position" title={`${GRID_POSITION_LABELS[gridSlot - 1]} grid position`}>
+              <GridPositionIcon position={gridSlot - 1} />
+            </span>
+          ) : <TerminalIcon className="pane-terminal-icon" />}
           <span className={`status-dot ${agentStatus !== 'idle' ? `agent-${agentStatus}` : status}`} />
           <span className="pane-title" title={title}>{title || name}</span>
           {agentStatus !== 'idle' && (

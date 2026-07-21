@@ -1,6 +1,6 @@
 {
   "name": "sterm",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "An AI agent control plane with real terminals and resumable Pi sessions",
   "author": "S-Block Technologies",
   "license": "MIT",

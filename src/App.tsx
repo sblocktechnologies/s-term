@@ -10,6 +10,7 @@ import {
   ChevronIcon,
   CloseIcon,
   GridIcon,
+  GridPositionIcon,
   PlugIcon,
   PlusIcon,
   SinglePaneIcon,
@@ -48,6 +49,7 @@ interface InitialWorkspace {
 }
 
 const WORKSPACE_KEY = 'sterm:workspace-v3';
+const GRID_POSITION_LABELS = ['Top left', 'Top right', 'Bottom left', 'Bottom right'] as const;
 let terminalNumber = 0;
 
 function makeSession(name?: string, id?: string, launch?: SessionLaunch): Session {
@@ -438,7 +440,11 @@ export default function App() {
                   <span className="session-name">{session.name}</span>
                   <span className={`session-title agent-${session.agentStatus}`}>{sessionSubtitle(session, now)}</span>
                 </span>
-                {slot >= 0 && <span className="session-grid-slot" title={`Grid slot ${slot + 1}`}>{slot + 1}</span>}
+                {slot >= 0 && (
+                  <span className="session-grid-slot" title={`${GRID_POSITION_LABELS[slot]} grid position`}>
+                    <GridPositionIcon position={slot} />
+                  </span>
+                )}
                 <span className={`agent-indicator ${session.agentStatus}${session.unread ? ' unread' : ''}`} title={sessionSubtitle(session, now)}>
                   {session.agentStatus === 'complete' && <CheckIcon />}
                   {session.agentStatus === 'attention' && <AlertIcon />}
@@ -474,7 +480,7 @@ export default function App() {
       <main className="main-content">
         <header className="toolbar drag-region">
           <div className="workspace-title no-drag">
-            <span>{layout === 'focus' ? activeSession?.name || 'No terminal' : `Grid slot ${selectedGridSlot + 1}`}</span>
+            <span>{layout === 'focus' ? activeSession?.name || 'No terminal' : `${GRID_POSITION_LABELS[selectedGridSlot]} grid position`}</span>
             <ChevronIcon />
           </div>
           <div className="toolbar-actions no-drag">
@@ -487,14 +493,15 @@ export default function App() {
                       type="button"
                       key={index}
                       className={`${selectedGridSlot === index ? 'selected' : ''}${terminalId ? ' filled' : ''}`}
-                      title={session ? `Slot ${index + 1}: ${session.name}` : `Select empty slot ${index + 1}`}
+                      title={session ? `${GRID_POSITION_LABELS[index]}: ${session.name}` : `Select empty ${GRID_POSITION_LABELS[index].toLowerCase()} position`}
+                      aria-label={session ? `${GRID_POSITION_LABELS[index]} grid position: ${session.name}` : `Select empty ${GRID_POSITION_LABELS[index].toLowerCase()} grid position`}
                       onClick={() => {
                         selectedGridSlotRef.current = index;
                         setSelectedGridSlot(index);
                         if (terminalId) selectSession(terminalId);
                       }}
                     >
-                      {index + 1}
+                      <GridPositionIcon position={index} />
                       {session && <i className={`slot-state ${session.agentStatus}`} />}
                     </button>
                   );
@@ -602,8 +609,8 @@ export default function App() {
                 }
               }}
             >
-              <span>{index + 1}</span>
-              <strong>Select a terminal</strong>
+              <span><GridPositionIcon position={index} /></span>
+              <strong>{GRID_POSITION_LABELS[index]}</strong>
               <small>{sessions.length === 0 ? 'Use + beside Terminals to open one' : 'Click this slot, then choose a sidebar tab'}</small>
             </button>
           ))}

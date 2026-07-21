@@ -734,6 +734,11 @@ button {
   border-radius: 8px;
 }
 
+.empty-pane > span svg {
+  width: 19px;
+  height: 19px;
+}
+
 .empty-pane strong {
   font-size: 11px;
   font-weight: 600;
@@ -842,6 +847,12 @@ button {
   border-color: #48584a;
   color: #a1bda0;
   background: #263027;
+}
+
+.session-grid-slot svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 1.6;
 }
 
 .agent-indicator {
@@ -974,6 +985,12 @@ button {
   background: #29332a;
 }
 
+.grid-slot-picker button > svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.55;
+}
+
 .slot-state {
   position: absolute;
   right: 3px;
@@ -1000,7 +1017,7 @@ button {
   background: #df6e6e;
 }
 
-.pane-slot-number {
+.pane-slot-position {
   display: grid;
   width: 17px;
   height: 17px;
@@ -1008,9 +1025,13 @@ button {
   border: 1px solid #344039;
   border-radius: 4px;
   color: #8fa98d;
-  font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 8px;
   background: #1b221d;
+}
+
+.pane-slot-position svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 1.65;
 }
 
 .pane-agent-state {
@@ -1542,7 +1563,7 @@ button:focus-visible {
   color: var(--pi-text);
 }
 
-.pane-slot-number {
+.pane-slot-position {
   border-color: var(--pi-accent-strong);
   color: var(--pi-accent-soft);
   background: #172554;

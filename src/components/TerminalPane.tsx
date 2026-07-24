@@ -6,6 +6,7 @@ import { CloseIcon, GridIcon, GridPositionIcon, PlusIcon, TerminalIcon } from '.
 import { parseAgentSignal, STERM_OSC_ID, type AgentProtocolMessage, type AgentState, type AgentTelemetry } from '../agentProtocol.js';
 import { getPiEditorSequence, PI_IMAGE_PASTE_SEQUENCE } from '../terminal-keymap.js';
 import { contentAlignedViewport } from '../terminalViewport.js';
+import { createTerminalOutputFilter } from '../terminalOutput.js';
 
 interface TerminalPaneProps {
   id: string;
@@ -176,6 +177,7 @@ export default function TerminalPane({
       },
     });
     const fitAddon = new FitAddon();
+    const outputFilter = createTerminalOutputFilter();
     const webLinksAddon = new WebLinksAddon(
       (_event, uri) => void window.sterm.openExternal(uri),
       {
@@ -226,7 +228,10 @@ export default function TerminalPane({
       });
     };
 
-    const stopData = window.sterm.terminal.onData(id, (data) => terminal.write(data));
+    const stopData = window.sterm.terminal.onData(id, (data) => {
+      const filtered = outputFilter.push(data, piModeRef.current);
+      if (filtered) terminal.write(filtered);
+    });
     const stopExit = window.sterm.terminal.onExit(id, ({ exitCode }) => {
       terminal.writeln(`\r\n\x1b[90mProcess exited with code ${exitCode}.\x1b[0m`);
       callbacksRef.current.onStatusChange('exited');
@@ -253,7 +258,6 @@ export default function TerminalPane({
     const inputDisposable = terminal.onData((data) => window.sterm.terminal.write(id, data));
     const resizeDisposable = terminal.onResize(({ cols, rows }) => {
       window.sterm.terminal.resize(id, cols, rows);
-      clampPiViewport();
     });
     const titleDisposable = terminal.onTitleChange((nextTitle) => {
       const cleaned = cleanTitle(nextTitle);

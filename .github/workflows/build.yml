@@ -59,6 +59,7 @@ jobs:
       - name: Package desktop app
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.artifact == 'macos' && 'true' || 'false' }}
+          CSC_NAME: ${{ matrix.artifact == 'macos' && 'Developer ID Application' || '' }}
           CSC_LINK: ${{ matrix.artifact == 'macos' && secrets.MAC_CERT_P12_BASE64 || '' }}
           CSC_KEY_PASSWORD: ${{ matrix.artifact == 'macos' && secrets.MAC_CERT_PASSWORD || '' }}
           APPLE_API_KEY_ID: ${{ matrix.artifact == 'macos' && secrets.APPLE_API_KEY_ID || '' }}

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.9
+
+### Fixed
+
+- Preserved Pi scrollback when focus and grid layout changes resize the terminal
+- Pi's synchronized resize redraw no longer forwards its erase-scrollback command to xterm
+- Removed resize-triggered viewport correction so layout changes do not create a second scroll operation
+- Normal terminal clear behavior remains unchanged
+
 ## 0.3.8
 
 ### Changed

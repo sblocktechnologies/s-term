@@ -69,6 +69,7 @@ interface Window {
     };
     piSessions: {
       list: (limit?: number) => Promise<PiSessionSummary[]>;
+      validate: (sessionPath: string) => Promise<{ path: string; cwd: string; id: string }>;
     };
     integrations: {
       list: () => Promise<IntegrationStatus[]>;

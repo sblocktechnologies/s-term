@@ -6,6 +6,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const telemetryScript = path.join(__dirname, '..', 'integrations', 'generic', 'telemetry.cjs');
+const piExtension = path.join(__dirname, '..', 'integrations', 'pi', 'sterm-agent-status.ts');
 
 function runTelemetry(args, payload, options = {}) {
   return spawnSync(process.execPath, [telemetryScript, ...args], {
@@ -26,6 +27,12 @@ function runTelemetry(args, payload, options = {}) {
 function oscMessages(output) {
   return [...output.matchAll(/\x1b\]777;([^\x07]*)\x07/g)].map((match) => match[1]);
 }
+
+test('Pi telemetry reports its authoritative resumable session', () => {
+  const source = fs.readFileSync(piExtension, 'utf8');
+  assert.match(source, /\["sessionId", ctx\.sessionManager\.getSessionId\(\)\]/);
+  assert.match(source, /\["sessionPath", ctx\.sessionManager\.getSessionFile\(\)\]/);
+});
 
 test('Claude status line emits rich S-Term telemetry without visible output', async (t) => {
   const repository = fs.mkdtempSync(path.join(os.tmpdir(), 'sterm-claude-telemetry-'));

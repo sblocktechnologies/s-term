@@ -20,6 +20,8 @@ export interface AgentTelemetry {
   provider?: string;
   model?: string;
   thinking?: string;
+  sessionId?: string;
+  sessionPath?: string;
   inputTokens?: number;
   outputTokens?: number;
   cacheReadTokens?: number;

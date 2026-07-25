@@ -231,6 +231,7 @@ function registerIpc() {
   });
 
   ipcMain.handle('pi:sessions:list', (_event, limit) => listPiSessions({ limit }));
+  ipcMain.handle('pi:sessions:validate', (_event, sessionPath) => validatePiSession(sessionPath));
 
   ipcMain.handle('integrations:list', () => integrationManager.list());
   ipcMain.handle('integrations:install', (_event, id) => integrationManager.install(id));

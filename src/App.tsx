@@ -109,6 +109,8 @@ function loadWorkspace(): InitialWorkspace {
     if (!Array.isArray(value.sessions)) return workspace;
 
     const seen = new Set<string>();
+    const seenPiSessionIds = new Set<string>();
+    const seenPiSessionPaths = new Set<string>();
     const sessions = value.sessions.flatMap((item) => {
       const id = typeof item.id === 'string' && /^[a-zA-Z0-9-]{1,80}$/.test(item.id) ? item.id : '';
       if (!id || seen.has(id)) return [];
@@ -124,6 +126,13 @@ function loadWorkspace(): InitialWorkspace {
             piSessionId: rawLaunch.piSessionId.slice(0, 80),
           }
         : undefined;
+      if (launch && (seenPiSessionIds.has(launch.piSessionId) || seenPiSessionPaths.has(launch.piSessionPath))) {
+        return [];
+      }
+      if (launch) {
+        seenPiSessionIds.add(launch.piSessionId);
+        seenPiSessionPaths.add(launch.piSessionPath);
+      }
       const cwd = typeof item.cwd === 'string' && item.cwd.length <= 4096 ? item.cwd : undefined;
       return [makeSession(name || undefined, id, launch, cwd)];
     });
@@ -194,6 +203,7 @@ export default function App() {
   const layoutRef = useRef(layout);
   const gridSlotsRef = useRef(gridSlots);
   const selectedGridSlotRef = useRef(selectedGridSlot);
+  const piSessionValidationRef = useRef(new Map<string, string>());
   sessionsRef.current = sessions;
   activeIdRef.current = activeId;
   layoutRef.current = layout;
@@ -266,6 +276,15 @@ export default function App() {
   }, [addTerminalSession]);
 
   const resumePiSession = useCallback((piSession: PiSessionSummary) => {
+    const existing = sessionsRef.current.find((session) =>
+      session.launch?.piSessionId === piSession.id ||
+      session.launch?.piSessionPath === piSession.path,
+    );
+    if (existing) {
+      selectSession(existing.id);
+      return;
+    }
+
     const sessionLabel = piSession.name || piSession.firstPrompt || piSession.project;
     const name = `Pi · ${sessionLabel}`.slice(0, 80);
     addTerminalSession(makeSession(name, undefined, {
@@ -273,7 +292,7 @@ export default function App() {
       piSessionPath: piSession.path,
       piSessionId: piSession.id,
     }, piSession.cwd));
-  }, [addTerminalSession]);
+  }, [addTerminalSession, selectSession]);
 
   const newTerminalInPane = useCallback(async (sourceId: string) => {
     const sourceBeforeLookup = sessionsRef.current.find((session) => session.id === sourceId);
@@ -312,6 +331,7 @@ export default function App() {
     if (closingIndex < 0) return;
 
     void window.sterm.terminal.kill(id);
+    piSessionValidationRef.current.delete(id);
     const next = current.filter((session) => session.id !== id);
 
     sessionsRef.current = next;
@@ -347,6 +367,43 @@ export default function App() {
         sessionsRef.current = next;
         return next;
       });
+
+      if (signal.agent.toLowerCase() === 'pi' && signal.sessionId && signal.sessionPath) {
+        const currentSession = sessionsRef.current.find((session) => session.id === id);
+        const validationKey = `${signal.sessionId}\u0000${signal.sessionPath}`;
+        const alreadySaved = currentSession?.launch?.piSessionId === signal.sessionId;
+        if (!alreadySaved && piSessionValidationRef.current.get(id) !== validationKey) {
+          piSessionValidationRef.current.set(id, validationKey);
+          void window.sterm.piSessions.validate(signal.sessionPath).then((validated) => {
+            if (validated.id !== signal.sessionId) return;
+            setSessions((current) => {
+              const target = current.find((session) => session.id === id);
+              if (!target) return current;
+              if (current.some((session) => session.id !== id && (
+                session.launch?.piSessionId === validated.id ||
+                session.launch?.piSessionPath === validated.path
+              ))) return current;
+              if (target.launch?.piSessionId === validated.id && target.launch.piSessionPath === validated.path) {
+                return current;
+              }
+              const launch: SessionLaunch = {
+                type: 'pi-session',
+                piSessionPath: validated.path,
+                piSessionId: validated.id,
+              };
+              const next = current.map((session) => session.id === id
+                ? { ...session, launch, cwd: validated.cwd }
+                : session);
+              sessionsRef.current = next;
+              return next;
+            });
+          }).catch(() => {
+            if (piSessionValidationRef.current.get(id) === validationKey) {
+              piSessionValidationRef.current.delete(id);
+            }
+          });
+        }
+      }
       return;
     }
 

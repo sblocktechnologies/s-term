@@ -69,6 +69,8 @@ export function parseAgentSignal(data) {
       provider: optionalText(fields, 'provider', 100),
       model: optionalText(fields, 'model', 240),
       thinking: optionalText(fields, 'thinking', 32),
+      sessionId: optionalText(fields, 'sessionId', 80),
+      sessionPath: optionalText(fields, 'sessionPath', 2048),
       subscription: subscriptionRaw === undefined ? undefined : subscriptionRaw === '1',
       ...numericFields,
     };

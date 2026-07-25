@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.10
+
+### Fixed
+
+- Pi started manually inside a normal terminal is now promoted to a resumable Pi-backed tab
+- Session paths reported by Pi are validated in the Electron main process before being persisted
+- Opening the same Pi session from the launcher now selects its existing tab instead of creating a duplicate
+- Duplicate Pi session records in a saved workspace are ignored during restoration
+
 ## 0.3.9
 
 ### Fixed

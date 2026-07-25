@@ -9,7 +9,7 @@ test('parses status and telemetry messages as distinct events', async () => {
   );
 
   assert.deepEqual(
-    parseAgentSignal('sterm;v=1;event=telemetry;agent=pi;cwd=~%2FDesktop%2Fsterm;branch=main;dirty=1;provider=anthropic;model=claude-opus;thinking=high;input=12000;output=3456;cacheRead=8000;cacheWrite=500;cost=0.125;sub=1;contextTokens=82000;contextWindow=200000;contextPercent=41'),
+    parseAgentSignal('sterm;v=1;event=telemetry;agent=pi;cwd=~%2FDesktop%2Fsterm;branch=main;dirty=1;provider=anthropic;model=claude-opus;thinking=high;sessionId=019f78f8-fd23-727a-8d28-93f60069a7a3;sessionPath=%2FUsers%2Fair%2F.pi%2Fagent%2Fsessions%2Fproject%2Fsession.jsonl;input=12000;output=3456;cacheRead=8000;cacheWrite=500;cost=0.125;sub=1;contextTokens=82000;contextWindow=200000;contextPercent=41'),
     {
       version: 1,
       event: 'telemetry',
@@ -20,6 +20,8 @@ test('parses status and telemetry messages as distinct events', async () => {
       provider: 'anthropic',
       model: 'claude-opus',
       thinking: 'high',
+      sessionId: '019f78f8-fd23-727a-8d28-93f60069a7a3',
+      sessionPath: '/Users/air/.pi/agent/sessions/project/session.jsonl',
       subscription: true,
       inputTokens: 12000,
       outputTokens: 3456,

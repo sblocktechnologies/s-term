@@ -140,6 +140,8 @@ export default function (pi: ExtensionAPI) {
         ["provider", model?.provider],
         ["model", model?.id],
         ["thinking", pi.getThinkingLevel()],
+        ["sessionId", ctx.sessionManager.getSessionId()],
+        ["sessionPath", ctx.sessionManager.getSessionFile()],
         ["input", input],
         ["output", output],
         ["cacheRead", cacheRead],

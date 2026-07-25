@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('sterm', {
   },
   piSessions: {
     list: (limit) => ipcRenderer.invoke('pi:sessions:list', limit),
+    validate: (sessionPath) => ipcRenderer.invoke('pi:sessions:validate', sessionPath),
   },
   integrations: {
     list: () => ipcRenderer.invoke('integrations:list'),

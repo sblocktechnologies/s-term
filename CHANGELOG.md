@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.13
+
+### Fixed
+
+- Increased xterm scrollback from 10,000 to 100,000 lines so large resumed Pi sessions retain their rendered conversation history
+- Added a sidebar action for replacing a fresh generic shell with a selected saved Pi session without changing the tab or grid assignment
+- Persisted detected agent identity as additional workspace recovery metadata
+
+### Changed
+
+- The terminal launcher clearly identifies when a saved Pi session will replace an existing fresh shell
+
 ## 0.3.12
 
 ### Changed

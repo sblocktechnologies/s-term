@@ -6,6 +6,7 @@ interface TerminalLauncherModalProps {
   onClose: () => void;
   onNewShell: () => void;
   onResumePiSession: (session: PiSessionSummary) => void;
+  replaceTargetName?: string;
 }
 
 function relativeTime(timestamp: number) {
@@ -33,6 +34,7 @@ export default function TerminalLauncherModal({
   onClose,
   onNewShell,
   onResumePiSession,
+  replaceTargetName,
 }: TerminalLauncherModalProps) {
   const [sessions, setSessions] = useState<PiSessionSummary[]>([]);
   const [query, setQuery] = useState('');
@@ -99,23 +101,25 @@ export default function TerminalLauncherModal({
       >
         <header className="launcher-header">
           <div>
-            <h2 id="terminal-launcher-title">Open terminal</h2>
-            <p>Start a shell or continue a local Pi session.</p>
+            <h2 id="terminal-launcher-title">{replaceTargetName ? `Resume Pi in ${replaceTargetName}` : 'Open terminal'}</h2>
+            <p>{replaceTargetName ? 'Replace this fresh shell with a saved local Pi session.' : 'Start a shell or continue a local Pi session.'}</p>
           </div>
           <button type="button" className="icon-button" onClick={onClose} aria-label="Close terminal launcher">
             <CloseIcon />
           </button>
         </header>
 
-        <button type="button" className="new-shell-option" onClick={onNewShell}>
-          <span className="launcher-option-icon"><TerminalIcon /></span>
-          <span className="launcher-option-copy">
-            <strong>New terminal</strong>
-            <small>Open your default login shell</small>
-          </span>
-          <span className="launcher-shortcut">{window.sterm.platform === 'darwin' ? '⌘⇧T' : 'Ctrl ⇧ T'}</span>
-          <ChevronIcon />
-        </button>
+        {!replaceTargetName && (
+          <button type="button" className="new-shell-option" onClick={onNewShell}>
+            <span className="launcher-option-icon"><TerminalIcon /></span>
+            <span className="launcher-option-copy">
+              <strong>New terminal</strong>
+              <small>Open your default login shell</small>
+            </span>
+            <span className="launcher-shortcut">{window.sterm.platform === 'darwin' ? '⌘⇧T' : 'Ctrl ⇧ T'}</span>
+            <ChevronIcon />
+          </button>
+        )}
 
         <div className="launcher-section-heading">
           <span><AgentIcon /> Resume Pi session</span>

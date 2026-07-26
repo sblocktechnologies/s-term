@@ -348,6 +348,7 @@ button {
   pointer-events: auto;
 }
 
+.session-resume,
 .session-rename,
 .session-pin,
 .session-close {
@@ -368,6 +369,7 @@ button {
   background: rgba(119, 181, 115, 0.12);
 }
 
+.session-resume svg,
 .session-rename svg,
 .session-pin svg,
 .session-close svg {
@@ -375,6 +377,7 @@ button {
   height: 13px;
 }
 
+.session-resume:hover,
 .session-rename:hover,
 .session-pin:hover,
 .session-close:hover {
@@ -1655,6 +1658,7 @@ button:focus-visible {
   background: linear-gradient(90deg, transparent, var(--pi-selected) 22%);
 }
 
+.session-resume,
 .session-rename,
 .session-pin,
 .session-close {
@@ -1667,6 +1671,7 @@ button:focus-visible {
   background: rgba(60, 131, 246, 0.14);
 }
 
+.session-resume:hover,
 .session-rename:hover,
 .session-pin:hover,
 .session-close:hover {

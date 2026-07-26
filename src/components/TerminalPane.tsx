@@ -7,6 +7,7 @@ import { parseAgentSignal, STERM_OSC_ID, type AgentProtocolMessage, type AgentSt
 import { getPiEditorSequence, PI_IMAGE_PASTE_SEQUENCE } from '../terminal-keymap.js';
 import { contentAlignedViewport } from '../terminalViewport.js';
 import { createTerminalOutputFilter } from '../terminalOutput.js';
+import { TERMINAL_SCROLLBACK } from '../terminalConfig.js';
 
 interface TerminalPaneProps {
   id: string;
@@ -142,7 +143,7 @@ export default function TerminalPane({
       macOptionIsMeta: true,
       minimumContrastRatio: 4.5,
       rightClickSelectsWord: true,
-      scrollback: 10000,
+      scrollback: TERMINAL_SCROLLBACK,
       // Programmatic Pi viewport correction must be immediate or it can fight TUI redraws.
       smoothScrollDuration: piMode ? 0 : 80,
       linkHandler: {

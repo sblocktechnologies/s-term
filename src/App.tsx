@@ -19,6 +19,7 @@ import {
 } from './workspaceSummary.js';
 import sblockLogo from './assets/sblock-logo.svg';
 import {
+  AgentIcon,
   AlertIcon,
   CheckIcon,
   ChevronIcon,
@@ -129,6 +130,7 @@ function loadWorkspace(): InitialWorkspace {
         pinned?: unknown;
         createdAt?: unknown;
         lastMessageAt?: unknown;
+        agentName?: unknown;
       }>;
       activeId?: unknown;
       layout?: unknown;
@@ -170,7 +172,13 @@ function loadWorkspace(): InitialWorkspace {
       const lastMessageAt = typeof item.lastMessageAt === 'number' && Number.isFinite(item.lastMessageAt) && item.lastMessageAt > 0
         ? item.lastMessageAt
         : undefined;
-      return [makeSession(name || undefined, id, launch, cwd, item.pinned === true, createdAt, lastMessageAt)];
+      const agentName = typeof item.agentName === 'string'
+        ? item.agentName.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 32) || undefined
+        : undefined;
+      return [{
+        ...makeSession(name || undefined, id, launch, cwd, item.pinned === true, createdAt, lastMessageAt),
+        agentName,
+      }];
     }));
     if (sessions.length === 0) return workspace;
 
@@ -231,6 +239,7 @@ export default function App() {
   const [version, setVersion] = useState('');
   const [now, setNow] = useState(Date.now());
   const [terminalLauncherOpen, setTerminalLauncherOpen] = useState(false);
+  const [terminalLauncherTargetId, setTerminalLauncherTargetId] = useState<string | null>(null);
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingSessionName, setEditingSessionName] = useState('');
@@ -366,6 +375,53 @@ export default function App() {
     }, piSession.cwd, false, Date.now(), piSession.modifiedAt));
   }, [addTerminalSession, selectSession]);
 
+  const replaceTerminalWithPiSession = useCallback(async (id: string, piSession: PiSessionSummary) => {
+    const existing = sessionsRef.current.find((session) => session.id !== id && (
+      session.launch?.piSessionId === piSession.id ||
+      session.launch?.piSessionPath === piSession.path
+    ));
+    if (existing) {
+      selectSession(existing.id);
+      return;
+    }
+    if (!sessionsRef.current.some((session) => session.id === id)) return;
+
+    try {
+      await window.sterm.terminal.kill(id);
+    } catch {
+      // The fresh shell may already have exited.
+    }
+
+    setSessions((current) => {
+      const target = current.find((session) => session.id === id);
+      if (!target) return current;
+      const sessionLabel = piSession.name || piSession.firstPrompt || piSession.project;
+      const generatedName = `Pi · ${sessionLabel}`.slice(0, 80);
+      const name = /^Terminal \d+$/.test(target.name) ? generatedName : target.name;
+      const launch: SessionLaunch = {
+        type: 'pi-session',
+        piSessionPath: piSession.path,
+        piSessionId: piSession.id,
+      };
+      const next = current.map((session) => session.id === id ? {
+        ...session,
+        name,
+        title: name,
+        status: 'running' as const,
+        agentStatus: 'idle' as const,
+        agentName: 'pi',
+        agentMessage: undefined,
+        telemetry: undefined,
+        launch,
+        cwd: piSession.cwd,
+        lastMessageAt: piSession.modifiedAt,
+        unread: false,
+      } : session);
+      sessionsRef.current = next;
+      return next;
+    });
+  }, [selectSession]);
+
   const newTerminalInPane = useCallback(async (sourceId: string) => {
     const sourceBeforeLookup = sessionsRef.current.find((session) => session.id === sourceId);
     if (!sourceBeforeLookup) return;
@@ -405,6 +461,7 @@ export default function App() {
     void window.sterm.terminal.kill(id);
     piSessionValidationRef.current.delete(id);
     setEditingSessionId((editingId) => editingId === id ? null : editingId);
+    setTerminalLauncherTargetId((targetId) => targetId === id ? null : targetId);
     const next = current.filter((session) => session.id !== id);
 
     sessionsRef.current = next;
@@ -573,7 +630,7 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem(WORKSPACE_KEY, JSON.stringify({
-      sessions: sessions.map(({ id, name, launch, cwd, pinned, createdAt, lastMessageAt }) => ({
+      sessions: sessions.map(({ id, name, launch, cwd, pinned, createdAt, lastMessageAt, agentName }) => ({
         id,
         name,
         launch,
@@ -581,6 +638,7 @@ export default function App() {
         pinned,
         createdAt,
         lastMessageAt,
+        agentName,
       })),
       activeId,
       layout,
@@ -618,6 +676,7 @@ export default function App() {
   }, [selectSession]);
 
   const activeSession = sessions.find((session) => session.id === activeId) ?? sessions[0];
+  const terminalLauncherTarget = sessions.find((session) => session.id === terminalLauncherTargetId);
   const workingCount = sessions.filter((session) => session.agentStatus === 'working').length;
   const attentionCount = sessions.filter((session) => session.agentStatus === 'attention').length;
   const unreadCount = sessions.filter((session) => session.unread).length;
@@ -636,7 +695,16 @@ export default function App() {
         <div className="sidebar-heading">
           <span className="sidebar-heading-label">
             Terminals
-            <button type="button" className="sidebar-add-button" title="Open terminal" aria-label="Open terminal" onClick={() => setTerminalLauncherOpen(true)}>
+            <button
+              type="button"
+              className="sidebar-add-button"
+              title="Open terminal"
+              aria-label="Open terminal"
+              onClick={() => {
+                setTerminalLauncherTargetId(null);
+                setTerminalLauncherOpen(true);
+              }}
+            >
               <PlusIcon />
             </button>
           </span>
@@ -775,6 +843,21 @@ export default function App() {
                     {session.agentStatus === 'error' && <span>!</span>}
                   </span>
                   <span className="session-actions">
+                    {!session.launch && (
+                      <button
+                        type="button"
+                        className="session-resume"
+                        title={`Resume a Pi session in ${session.name}`}
+                        aria-label={`Resume a Pi session in ${session.name}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setTerminalLauncherTargetId(session.id);
+                          setTerminalLauncherOpen(true);
+                        }}
+                      >
+                        <AgentIcon />
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="session-rename"
@@ -1008,14 +1091,21 @@ export default function App() {
 
       <TerminalLauncherModal
         open={terminalLauncherOpen}
-        onClose={() => setTerminalLauncherOpen(false)}
+        replaceTargetName={terminalLauncherTarget?.name}
+        onClose={() => {
+          setTerminalLauncherOpen(false);
+          setTerminalLauncherTargetId(null);
+        }}
         onNewShell={() => {
           setTerminalLauncherOpen(false);
+          setTerminalLauncherTargetId(null);
           newTerminal();
         }}
         onResumePiSession={(piSession) => {
           setTerminalLauncherOpen(false);
-          resumePiSession(piSession);
+          setTerminalLauncherTargetId(null);
+          if (terminalLauncherTarget) void replaceTerminalWithPiSession(terminalLauncherTarget.id, piSession);
+          else resumePiSession(piSession);
         }}
       />
 

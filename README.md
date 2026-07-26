@@ -62,7 +62,7 @@ All canonical integration source lives under [`integrations/`](integrations/). I
 
 ## Opening terminals and Pi sessions
 
-Select the `+` beside **Terminals** to open the terminal launcher. Choose **New terminal** for a normal login shell, or search local sessions stored under `~/.pi/agent/sessions` and select one to resume it in a new tab.
+Select the `+` beside **Terminals** to open the terminal launcher. Choose **New terminal** for a normal login shell, or search local sessions stored under `~/.pi/agent/sessions` and select one to resume it in a new tab. If an older workspace reopens a former Pi tab as a fresh shell, hover over that sidebar tab and use the agent action to replace it with the correct saved Pi session while preserving its tab and grid position.
 
 `Cmd/Ctrl + Shift + T` remains a shortcut for opening a normal terminal immediately.
 
@@ -70,7 +70,7 @@ Sidebar tabs can be renamed by double-clicking their name, pressing `F2` while f
 
 Open tabs are restored when S-Term is relaunched. Pi-backed tabs resume their saved Pi session. With the current Pi integration, Pi started manually inside a normal S-Term shell is promoted to a resumable tab after S-Term validates Pi's authoritative session file. Normal terminal tabs reopen as fresh login shells because their original shell processes end with the application. Closing every tab leaves the next launch empty.
 
-Pi redraws are rendered atomically so wrapped drafts and streaming agent output remain stable. Switching between grid and focus layouts preserves Pi scrollback across terminal resizes. When Pi is idle, S-Term aligns its inline editor border with the bottom of the pane and prevents intentional downward scrolling into blank terminal rows. Upward scrollback remains available. Pi panes also support macOS editing conventions including `Cmd+Backspace` to clear the current draft.
+Pi redraws are rendered atomically so wrapped drafts and streaming agent output remain stable. S-Term retains up to 100,000 xterm scrollback lines so large resumed sessions keep their rendered history. Switching between grid and focus layouts preserves Pi scrollback across terminal resizes. When Pi is idle, S-Term aligns its inline editor border with the bottom of the pane and prevents intentional downward scrolling into blank terminal rows. Upward scrollback remains available. Pi panes also support macOS editing conventions including `Cmd+Backspace` to clear the current draft.
 
 ## Selecting grid terminals
 

@@ -42,7 +42,13 @@ test('lists Pi sessions with safe searchable metadata', async () => {
 test('validates sessions and restores their working directory', () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 's-term-pi-session-'));
   const { file, cwd } = makeSession(home);
-  assert.deepEqual(validatePiSession(file, { home }), { path: fs.realpathSync(file), cwd, id: 'session-id' });
+  const validated = validatePiSession(file, { home });
+  assert.deepEqual(validated, {
+    path: fs.realpathSync(file),
+    cwd,
+    id: 'session-id',
+    modifiedAt: validated.modifiedAt,
+  });
 });
 
 test('rejects files outside Pi session storage', () => {

@@ -148,11 +148,12 @@ function validatePiSession(sessionPath, options = {}) {
   if (!file.startsWith(`${root}${path.sep}`) || path.extname(file) !== '.jsonl') {
     throw new Error('Pi session is outside the session directory');
   }
-  if (!fs.statSync(file).isFile()) throw new Error('Pi session is not a file');
+  const stats = fs.statSync(file);
+  if (!stats.isFile()) throw new Error('Pi session is not a file');
 
   const header = readHeader(file);
   const cwd = fs.existsSync(header.cwd) && fs.statSync(header.cwd).isDirectory() ? header.cwd : home;
-  return { path: file, cwd, id: header.id };
+  return { path: file, cwd, id: header.id, modifiedAt: stats.mtimeMs };
 }
 
 module.exports = {

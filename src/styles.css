@@ -268,10 +268,9 @@ button {
   color: #8bb689;
 }
 
-.session-number svg {
-  width: 12px;
-  height: 12px;
+.session-item.pinned .session-number {
   color: #9bc898;
+  font-weight: 700;
 }
 
 .session-copy {
@@ -1623,7 +1622,7 @@ button:focus-visible {
 }
 
 .session-item.active .session-number,
-.session-number svg,
+.session-item.pinned .session-number,
 .session-title.agent-working {
   color: var(--pi-accent-soft);
 }

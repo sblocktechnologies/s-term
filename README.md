@@ -66,7 +66,7 @@ Select the `+` beside **Terminals** to open the terminal launcher. Choose **New 
 
 `Cmd/Ctrl + Shift + T` remains a shortcut for opening a normal terminal immediately.
 
-Sidebar tabs can be renamed by double-clicking their name, pressing `F2` while focused, or selecting the edit action on hover. Drag tabs above or below another tab in the same pinned or unpinned group to reorder them. Use the pin action to keep important tabs in a persistent group at the top. Sidebar order does not change grid pane placement.
+Sidebar tabs can be renamed by double-clicking their name, pressing `F2` while focused, or selecting the edit action on hover. Drag tabs above or below another tab in the same pinned or unpinned group to reorder them. Use the pin action to keep important tabs in a persistent group at the top. Sidebar order does not change grid pane placement. The compact value at the left of each tab shows time since its last meaningful agent message, falling back to time since the tab opened before the first message.
 
 Open tabs are restored when S-Term is relaunched. Pi-backed tabs resume their saved Pi session. With the current Pi integration, Pi started manually inside a normal S-Term shell is promoted to a resumable tab after S-Term validates Pi's authoritative session file. Normal terminal tabs reopen as fresh login shells because their original shell processes end with the application. Closing every tab leaves the next launch empty.
 

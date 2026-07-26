@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.12
+
+### Changed
+
+- Replaced sidebar ordinal numbers with compact time since the last meaningful agent message, such as `3s`, `10m`, `4h`, or `2d`
+- Tabs without an agent message show time since they were opened
+- Recency timestamps persist across application restarts
+- Existing Pi tabs initialize recency from the validated session file modification time
+- Pinned-tab recency uses the accent color while remaining visible
+
 ## 0.3.11
 
 ### Added

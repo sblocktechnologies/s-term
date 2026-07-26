@@ -4,6 +4,7 @@ import IntegrationsModal from './components/IntegrationsModal';
 import TerminalLauncherModal from './components/TerminalLauncherModal';
 import { agentDisplayName, type AgentProtocolMessage, type AgentState, type AgentTelemetry } from './agentProtocol.js';
 import { newTerminalGridSlot, swapGridSlots } from './gridPlacement.js';
+import { sessionRecency } from './sessionRecency.js';
 import {
   normalizePinnedSessions,
   reorderSidebarSessions,
@@ -52,7 +53,8 @@ interface Session {
   telemetry?: AgentTelemetry;
   cwd?: string;
   agentStartedAt?: number;
-  agentUpdatedAt?: number;
+  createdAt: number;
+  lastMessageAt?: number;
   unread: boolean;
   pinned: boolean;
   launch?: SessionLaunch;
@@ -75,7 +77,15 @@ const GRID_ACTIVITY_LABELS: Record<GridActivityState, string> = {
 };
 let terminalNumber = 0;
 
-function makeSession(name?: string, id?: string, launch?: SessionLaunch, cwd?: string, pinned = false): Session {
+function makeSession(
+  name?: string,
+  id?: string,
+  launch?: SessionLaunch,
+  cwd?: string,
+  pinned = false,
+  createdAt = Date.now(),
+  lastMessageAt?: number,
+): Session {
   terminalNumber += 1;
   const sessionName = name || `Terminal ${terminalNumber}`;
   const numberedName = /^Terminal (\d+)$/.exec(sessionName);
@@ -89,6 +99,8 @@ function makeSession(name?: string, id?: string, launch?: SessionLaunch, cwd?: s
     title: sessionName,
     status: 'running',
     agentStatus: 'idle',
+    createdAt,
+    lastMessageAt,
     unread: false,
     pinned,
     launch,
@@ -109,7 +121,15 @@ function loadWorkspace(): InitialWorkspace {
   const workspace = defaultWorkspace();
   try {
     const value = JSON.parse(localStorage.getItem(WORKSPACE_KEY) || 'null') as {
-      sessions?: Array<{ id?: unknown; name?: unknown; launch?: unknown; cwd?: unknown; pinned?: unknown }>;
+      sessions?: Array<{
+        id?: unknown;
+        name?: unknown;
+        launch?: unknown;
+        cwd?: unknown;
+        pinned?: unknown;
+        createdAt?: unknown;
+        lastMessageAt?: unknown;
+      }>;
       activeId?: unknown;
       layout?: unknown;
       gridSlots?: unknown[];
@@ -144,7 +164,13 @@ function loadWorkspace(): InitialWorkspace {
         seenPiSessionPaths.add(launch.piSessionPath);
       }
       const cwd = typeof item.cwd === 'string' && item.cwd.length <= 4096 ? item.cwd : undefined;
-      return [makeSession(name || undefined, id, launch, cwd, item.pinned === true)];
+      const createdAt = typeof item.createdAt === 'number' && Number.isFinite(item.createdAt) && item.createdAt > 0
+        ? item.createdAt
+        : Date.now();
+      const lastMessageAt = typeof item.lastMessageAt === 'number' && Number.isFinite(item.lastMessageAt) && item.lastMessageAt > 0
+        ? item.lastMessageAt
+        : undefined;
+      return [makeSession(name || undefined, id, launch, cwd, item.pinned === true, createdAt, lastMessageAt)];
     }));
     if (sessions.length === 0) return workspace;
 
@@ -337,7 +363,7 @@ export default function App() {
       type: 'pi-session',
       piSessionPath: piSession.path,
       piSessionId: piSession.id,
-    }, piSession.cwd));
+    }, piSession.cwd, false, Date.now(), piSession.modifiedAt));
   }, [addTerminalSession, selectSession]);
 
   const newTerminalInPane = useCallback(async (sourceId: string) => {
@@ -439,7 +465,12 @@ export default function App() {
                 piSessionId: validated.id,
               };
               const next = current.map((session) => session.id === id
-                ? { ...session, launch, cwd: validated.cwd }
+                ? {
+                    ...session,
+                    launch,
+                    cwd: validated.cwd,
+                    lastMessageAt: session.lastMessageAt || validated.modifiedAt,
+                  }
                 : session);
               sessionsRef.current = next;
               return next;
@@ -471,7 +502,7 @@ export default function App() {
           agentName: signal.agent,
           agentMessage: signal.message,
           agentStartedAt: startedAt,
-          agentUpdatedAt: timestamp,
+          lastMessageAt: notable ? timestamp : session.lastMessageAt,
           unread: notable ? !viewed : false,
         };
       });
@@ -517,6 +548,22 @@ export default function App() {
   useEffect(() => {
     void window.sterm.getVersion().then(setVersion);
     void window.sterm.integrations.list().then(setIntegrationStatuses).catch(() => undefined);
+
+    for (const session of sessionsRef.current) {
+      if (!session.launch || session.lastMessageAt) continue;
+      void window.sterm.piSessions.validate(session.launch.piSessionPath).then((validated) => {
+        if (validated.id !== session.launch?.piSessionId) return;
+        setSessions((current) => {
+          const target = current.find((item) => item.id === session.id);
+          if (!target || target.lastMessageAt) return current;
+          const next = current.map((item) => item.id === session.id
+            ? { ...item, lastMessageAt: validated.modifiedAt }
+            : item);
+          sessionsRef.current = next;
+          return next;
+        });
+      }).catch(() => undefined);
+    }
   }, []);
 
   useEffect(() => {
@@ -526,7 +573,15 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem(WORKSPACE_KEY, JSON.stringify({
-      sessions: sessions.map(({ id, name, launch, cwd, pinned }) => ({ id, name, launch, cwd, pinned })),
+      sessions: sessions.map(({ id, name, launch, cwd, pinned, createdAt, lastMessageAt }) => ({
+        id,
+        name,
+        launch,
+        cwd,
+        pinned,
+        createdAt,
+        lastMessageAt,
+      })),
       activeId,
       layout,
       gridSlots,
@@ -600,6 +655,7 @@ export default function App() {
           {sessions.map((session, index) => {
             const slot = gridSlots.indexOf(session.id);
             const startsUnpinnedGroup = index > 0 && !session.pinned && sessions[index - 1].pinned;
+            const recency = sessionRecency(session, now);
             const dropClass = sidebarDrop?.targetId === session.id ? ` drop-${sidebarDrop.position}` : '';
             return (
               <Fragment key={session.id}>
@@ -668,8 +724,8 @@ export default function App() {
                     setSidebarDrop(null);
                   }}
                 >
-                  <span className="session-number">
-                    {session.pinned ? <PinIcon /> : String(index + 1).padStart(2, '0')}
+                  <span className="session-number" title={recency.title} aria-label={recency.title}>
+                    {recency.elapsed}
                   </span>
                   <span className="session-copy">
                     {editingSessionId === session.id ? (

@@ -10,6 +10,7 @@ S-Term is a desktop terminal and AI agent control plane built with Electron, Rea
 - Explicit grid tab selection and drag-and-drop placement
 - One-click pane duplication into the same working directory
 - Restores open terminal tabs after relaunch and stays empty when all tabs were closed
+- Persistent tab names, sidebar drag ordering, and pinned tabs
 - Agent working, attention, completed, and error indicators
 - Searchable local Pi session launcher and one-click resume
 - Clickable HTTP and HTTPS links in terminal output
@@ -64,6 +65,8 @@ All canonical integration source lives under [`integrations/`](integrations/). I
 Select the `+` beside **Terminals** to open the terminal launcher. Choose **New terminal** for a normal login shell, or search local sessions stored under `~/.pi/agent/sessions` and select one to resume it in a new tab.
 
 `Cmd/Ctrl + Shift + T` remains a shortcut for opening a normal terminal immediately.
+
+Sidebar tabs can be renamed by double-clicking their name, pressing `F2` while focused, or selecting the edit action on hover. Drag tabs above or below another tab in the same pinned or unpinned group to reorder them. Use the pin action to keep important tabs in a persistent group at the top. Sidebar order does not change grid pane placement.
 
 Open tabs are restored when S-Term is relaunched. Pi-backed tabs resume their saved Pi session. With the current Pi integration, Pi started manually inside a normal S-Term shell is promoted to a resumable tab after S-Term validates Pi's authoritative session file. Normal terminal tabs reopen as fresh login shells because their original shell processes end with the application. Closing every tab leaves the next launch empty.
 

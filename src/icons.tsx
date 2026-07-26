@@ -126,6 +126,24 @@ export function PlugIcon(props: IconProps) {
   );
 }
 
+export function PinIcon(props: IconProps) {
+  return (
+    <svg {...defaults} {...props}>
+      <path d="m9 4 6 0-.8 5 2.8 3H7l2.8-3L9 4Z" />
+      <path d="M12 12v8" />
+    </svg>
+  );
+}
+
+export function EditIcon(props: IconProps) {
+  return (
+    <svg {...defaults} {...props}>
+      <path d="M4 20h4L19 9l-4-4L4 16v4Z" />
+      <path d="m13.5 6.5 4 4" />
+    </svg>
+  );
+}
+
 export function SearchIcon(props: IconProps) {
   return (
     <svg {...defaults} {...props}>

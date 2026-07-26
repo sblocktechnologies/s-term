@@ -205,6 +205,44 @@ button {
   text-align: left;
   background: transparent;
   cursor: pointer;
+  font: inherit;
+  user-select: none;
+}
+
+.session-item[draggable="true"] {
+  cursor: grab;
+}
+
+.session-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.session-item.drop-before::before,
+.session-item.drop-after::after {
+  position: absolute;
+  right: 5px;
+  left: 5px;
+  z-index: 2;
+  height: 2px;
+  border-radius: 2px;
+  background: #81bb7e;
+  box-shadow: 0 0 8px rgba(129, 187, 126, 0.55);
+  content: "";
+}
+
+.session-item.drop-before::before {
+  top: -3px;
+}
+
+.session-item.drop-after::after {
+  bottom: -3px;
+}
+
+.session-pin-divider {
+  height: 1px;
+  flex: 0 0 auto;
+  margin: 5px 8px;
+  background: #303734;
 }
 
 .session-item:hover {
@@ -230,6 +268,12 @@ button {
   color: #8bb689;
 }
 
+.session-number svg {
+  width: 12px;
+  height: 12px;
+  color: #9bc898;
+}
+
 .session-copy {
   display: flex;
   min-width: 0;
@@ -247,6 +291,22 @@ button {
 .session-name {
   font-size: 12px;
   font-weight: 580;
+}
+
+.session-name-input {
+  width: 100%;
+  min-width: 0;
+  height: 21px;
+  padding: 1px 5px;
+  border: 1px solid #516358;
+  border-radius: 4px;
+  outline: none;
+  color: #e4e8e3;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 580;
+  background: #101512;
+  box-shadow: 0 0 0 2px rgba(129, 187, 126, 0.12);
 }
 
 .session-title {
@@ -269,27 +329,55 @@ button {
   box-shadow: none;
 }
 
-.session-close {
+.session-actions {
   position: absolute;
   right: 6px;
-  display: none;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  padding-left: 10px;
+  background: linear-gradient(90deg, transparent, #242a28 22%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.session-item:hover .session-actions,
+.session-item:focus-within .session-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.session-rename,
+.session-pin,
+.session-close {
+  display: grid;
   width: 20px;
   height: 20px;
+  padding: 0;
   place-items: center;
+  border: 0;
   border-radius: 5px;
   color: #747c79;
   background: #242a28;
+  cursor: pointer;
 }
 
+.session-pin.pinned {
+  color: #9bc898;
+  background: rgba(119, 181, 115, 0.12);
+}
+
+.session-rename svg,
+.session-pin svg,
 .session-close svg {
   width: 13px;
   height: 13px;
 }
 
-.session-item:hover .session-close {
-  display: grid;
-}
-
+.session-rename:hover,
+.session-pin:hover,
 .session-close:hover {
   color: #e4e8e3;
   background: #353c39;
@@ -1535,6 +1623,7 @@ button:focus-visible {
 }
 
 .session-item.active .session-number,
+.session-number svg,
 .session-title.agent-working {
   color: var(--pi-accent-soft);
 }
@@ -1563,14 +1652,44 @@ button:focus-visible {
   background: #172554;
 }
 
+.session-actions {
+  background: linear-gradient(90deg, transparent, var(--pi-selected) 22%);
+}
+
+.session-rename,
+.session-pin,
 .session-close {
   color: var(--pi-muted);
   background: var(--pi-selected);
 }
 
+.session-pin.pinned {
+  color: var(--pi-accent-soft);
+  background: rgba(60, 131, 246, 0.14);
+}
+
+.session-rename:hover,
+.session-pin:hover,
 .session-close:hover {
   color: var(--pi-text);
   background: var(--pi-border);
+}
+
+.session-name-input {
+  border-color: var(--pi-accent-strong);
+  color: var(--pi-text);
+  background: var(--pi-page);
+  box-shadow: 0 0 0 2px rgba(60, 131, 246, 0.16);
+}
+
+.session-pin-divider {
+  background: var(--pi-border-muted);
+}
+
+.session-item.drop-before::before,
+.session-item.drop-after::after {
+  background: var(--pi-accent);
+  box-shadow: 0 0 8px rgba(60, 131, 246, 0.6);
 }
 
 .integrations-button {

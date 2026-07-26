@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.11
+
+### Added
+
+- Persistent user-defined terminal names with inline editing from double-click, `F2`, or the sidebar edit action
+- Functional sidebar drag ordering with before and after insertion indicators
+- Persistent pinned tabs grouped at the top of the sidebar
+
+### Changed
+
+- Sidebar order is independent from four-pane grid placement
+- Opening an existing saved workspace normalizes pinned terminals without disturbing order inside each group
+
 ## 0.3.10
 
 ### Fixed

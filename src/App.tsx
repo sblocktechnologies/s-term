@@ -1,9 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import TerminalPane from './components/TerminalPane';
 import IntegrationsModal from './components/IntegrationsModal';
 import TerminalLauncherModal from './components/TerminalLauncherModal';
 import { agentDisplayName, type AgentProtocolMessage, type AgentState, type AgentTelemetry } from './agentProtocol.js';
 import { newTerminalGridSlot, swapGridSlots } from './gridPlacement.js';
+import {
+  normalizePinnedSessions,
+  reorderSidebarSessions,
+  toggleSessionPin,
+  type SidebarDropPosition,
+} from './sidebarSessions.js';
 import {
   GRID_ACTIVITY_STATES,
   gridWorkspaceSummary,
@@ -16,11 +22,13 @@ import {
   CheckIcon,
   ChevronIcon,
   CloseIcon,
+  EditIcon,
   GridIcon,
   GridPositionIcon,
   PlugIcon,
   PlusIcon,
   SinglePaneIcon,
+  PinIcon,
   TerminalIcon,
 } from './icons';
 
@@ -46,6 +54,7 @@ interface Session {
   agentStartedAt?: number;
   agentUpdatedAt?: number;
   unread: boolean;
+  pinned: boolean;
   launch?: SessionLaunch;
 }
 
@@ -66,7 +75,7 @@ const GRID_ACTIVITY_LABELS: Record<GridActivityState, string> = {
 };
 let terminalNumber = 0;
 
-function makeSession(name?: string, id?: string, launch?: SessionLaunch, cwd?: string): Session {
+function makeSession(name?: string, id?: string, launch?: SessionLaunch, cwd?: string, pinned = false): Session {
   terminalNumber += 1;
   const sessionName = name || `Terminal ${terminalNumber}`;
   const numberedName = /^Terminal (\d+)$/.exec(sessionName);
@@ -81,6 +90,7 @@ function makeSession(name?: string, id?: string, launch?: SessionLaunch, cwd?: s
     status: 'running',
     agentStatus: 'idle',
     unread: false,
+    pinned,
     launch,
     cwd,
   };
@@ -99,7 +109,7 @@ function loadWorkspace(): InitialWorkspace {
   const workspace = defaultWorkspace();
   try {
     const value = JSON.parse(localStorage.getItem(WORKSPACE_KEY) || 'null') as {
-      sessions?: Array<{ id?: unknown; name?: unknown; launch?: unknown; cwd?: unknown }>;
+      sessions?: Array<{ id?: unknown; name?: unknown; launch?: unknown; cwd?: unknown; pinned?: unknown }>;
       activeId?: unknown;
       layout?: unknown;
       gridSlots?: unknown[];
@@ -111,7 +121,7 @@ function loadWorkspace(): InitialWorkspace {
     const seen = new Set<string>();
     const seenPiSessionIds = new Set<string>();
     const seenPiSessionPaths = new Set<string>();
-    const sessions = value.sessions.flatMap((item) => {
+    const sessions = normalizePinnedSessions(value.sessions.flatMap((item) => {
       const id = typeof item.id === 'string' && /^[a-zA-Z0-9-]{1,80}$/.test(item.id) ? item.id : '';
       if (!id || seen.has(id)) return [];
       seen.add(id);
@@ -134,8 +144,8 @@ function loadWorkspace(): InitialWorkspace {
         seenPiSessionPaths.add(launch.piSessionPath);
       }
       const cwd = typeof item.cwd === 'string' && item.cwd.length <= 4096 ? item.cwd : undefined;
-      return [makeSession(name || undefined, id, launch, cwd)];
-    });
+      return [makeSession(name || undefined, id, launch, cwd, item.pinned === true)];
+    }));
     if (sessions.length === 0) return workspace;
 
     const sessionIds = new Set(sessions.map((session) => session.id));
@@ -196,6 +206,9 @@ export default function App() {
   const [now, setNow] = useState(Date.now());
   const [terminalLauncherOpen, setTerminalLauncherOpen] = useState(false);
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingSessionName, setEditingSessionName] = useState('');
+  const [sidebarDrop, setSidebarDrop] = useState<{ targetId: string; position: SidebarDropPosition } | null>(null);
   const [integrationStatuses, setIntegrationStatuses] = useState<IntegrationStatus[]>([]);
 
   const sessionsRef = useRef(sessions);
@@ -204,6 +217,7 @@ export default function App() {
   const gridSlotsRef = useRef(gridSlots);
   const selectedGridSlotRef = useRef(selectedGridSlot);
   const piSessionValidationRef = useRef(new Map<string, string>());
+  const sidebarDragIdRef = useRef<string | null>(null);
   sessionsRef.current = sessions;
   activeIdRef.current = activeId;
   layoutRef.current = layout;
@@ -271,6 +285,38 @@ export default function App() {
     if (layoutRef.current === 'grid') placeInGrid(session.id, selectedGridSlotRef.current);
   }, [placeInGrid]);
 
+  const renameSession = useCallback((id: string, nextName: string) => {
+    const name = nextName.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 80);
+    setEditingSessionId(null);
+    setEditingSessionName('');
+    if (!name) return;
+    setSessions((current) => {
+      const target = current.find((session) => session.id === id);
+      if (!target || target.name === name) return current;
+      const next = current.map((session) => session.id === id ? { ...session, name } : session);
+      sessionsRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const togglePinnedSession = useCallback((id: string) => {
+    setSessions((current) => {
+      const next = toggleSessionPin(current, id);
+      if (next === current) return current;
+      sessionsRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const reorderSession = useCallback((sourceId: string, targetId: string, position: SidebarDropPosition) => {
+    setSessions((current) => {
+      const next = reorderSidebarSessions(current, sourceId, targetId, position);
+      if (next === current) return current;
+      sessionsRef.current = next;
+      return next;
+    });
+  }, []);
+
   const newTerminal = useCallback(() => {
     addTerminalSession(makeSession());
   }, [addTerminalSession]);
@@ -332,6 +378,7 @@ export default function App() {
 
     void window.sterm.terminal.kill(id);
     piSessionValidationRef.current.delete(id);
+    setEditingSessionId((editingId) => editingId === id ? null : editingId);
     const next = current.filter((session) => session.id !== id);
 
     sessionsRef.current = next;
@@ -479,7 +526,7 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem(WORKSPACE_KEY, JSON.stringify({
-      sessions: sessions.map(({ id, name, launch, cwd }) => ({ id, name, launch, cwd })),
+      sessions: sessions.map(({ id, name, launch, cwd, pinned }) => ({ id, name, launch, cwd, pinned })),
       activeId,
       layout,
       gridSlots,
@@ -552,47 +599,166 @@ export default function App() {
         <nav className="session-list" aria-label="Terminals">
           {sessions.map((session, index) => {
             const slot = gridSlots.indexOf(session.id);
+            const startsUnpinnedGroup = index > 0 && !session.pinned && sessions[index - 1].pinned;
+            const dropClass = sidebarDrop?.targetId === session.id ? ` drop-${sidebarDrop.position}` : '';
             return (
-              <button
-                type="button"
-                key={session.id}
-                draggable
-                className={`session-item${session.id === activeId ? ' active' : ''}${session.unread ? ' unread' : ''}`}
-                onClick={() => selectSession(session.id)}
-                onDoubleClick={() => setLayoutMode('focus')}
-                onDragStart={(event) => {
-                  event.dataTransfer.effectAllowed = 'move';
-                  event.dataTransfer.setData('application/x-sterm-terminal', session.id);
-                }}
-              >
-                <span className="session-number">{String(index + 1).padStart(2, '0')}</span>
-                <span className="session-copy">
-                  <span className="session-name">{session.name}</span>
-                  <span className={`session-title agent-${session.agentStatus}`}>{sessionSubtitle(session, now)}</span>
-                </span>
-                {slot >= 0 && (
-                  <span className="session-grid-slot" title={`${GRID_POSITION_LABELS[slot]} grid position`}>
-                    <GridPositionIcon position={slot} />
-                  </span>
-                )}
-                <span className={`agent-indicator ${session.agentStatus}${session.unread ? ' unread' : ''}`} title={sessionSubtitle(session, now)}>
-                  {session.agentStatus === 'complete' && <CheckIcon />}
-                  {session.agentStatus === 'attention' && <AlertIcon />}
-                  {session.agentStatus === 'error' && <span>!</span>}
-                </span>
-                <span
+              <Fragment key={session.id}>
+                {startsUnpinnedGroup && <div className="session-pin-divider" aria-hidden="true" />}
+                <div
                   role="button"
-                  tabIndex={-1}
-                  className="session-close"
-                  aria-label={`Close ${session.name}`}
-                  onClick={(event) => {
+                  tabIndex={0}
+                  draggable={editingSessionId !== session.id}
+                  className={`session-item${session.id === activeId ? ' active' : ''}${session.unread ? ' unread' : ''}${session.pinned ? ' pinned' : ''}${dropClass}`}
+                  onClick={() => selectSession(session.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'F2') {
+                      event.preventDefault();
+                      setEditingSessionId(session.id);
+                      setEditingSessionName(session.name);
+                    } else if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      selectSession(session.id);
+                    }
+                  }}
+                  onDoubleClick={(event) => {
+                    if (!(event.target as HTMLElement).closest('.session-name, .session-name-input, .session-actions')) {
+                      setLayoutMode('focus');
+                    }
+                  }}
+                  onDragStart={(event) => {
+                    if ((event.target as HTMLElement).closest('button, input')) {
+                      event.preventDefault();
+                      return;
+                    }
+                    sidebarDragIdRef.current = session.id;
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('application/x-sterm-terminal', session.id);
+                  }}
+                  onDragOver={(event) => {
+                    const sourceId = sidebarDragIdRef.current;
+                    const source = sessionsRef.current.find((item) => item.id === sourceId);
+                    if (!sourceId || sourceId === session.id || Boolean(source?.pinned) !== session.pinned) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = 'move';
+                    const bounds = event.currentTarget.getBoundingClientRect();
+                    const position = event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
+                    if (sidebarDrop?.targetId !== session.id || sidebarDrop.position !== position) {
+                      setSidebarDrop({ targetId: session.id, position });
+                    }
+                  }}
+                  onDragLeave={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null) && sidebarDrop?.targetId === session.id) {
+                      setSidebarDrop(null);
+                    }
+                  }}
+                  onDrop={(event) => {
+                    const sourceId = sidebarDragIdRef.current;
+                    const source = sessionsRef.current.find((item) => item.id === sourceId);
+                    if (!sourceId || sourceId === session.id || Boolean(source?.pinned) !== session.pinned) return;
+                    event.preventDefault();
                     event.stopPropagation();
-                    closeTerminal(session.id);
+                    const bounds = event.currentTarget.getBoundingClientRect();
+                    const position = event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
+                    reorderSession(sourceId, session.id, position);
+                    sidebarDragIdRef.current = null;
+                    setSidebarDrop(null);
+                  }}
+                  onDragEnd={() => {
+                    sidebarDragIdRef.current = null;
+                    setSidebarDrop(null);
                   }}
                 >
-                  <CloseIcon />
-                </span>
-              </button>
+                  <span className="session-number">
+                    {session.pinned ? <PinIcon /> : String(index + 1).padStart(2, '0')}
+                  </span>
+                  <span className="session-copy">
+                    {editingSessionId === session.id ? (
+                      <input
+                        autoFocus
+                        className="session-name-input"
+                        aria-label={`Rename ${session.name}`}
+                        maxLength={80}
+                        value={editingSessionName}
+                        onFocus={(event) => event.currentTarget.select()}
+                        onClick={(event) => event.stopPropagation()}
+                        onDoubleClick={(event) => event.stopPropagation()}
+                        onChange={(event) => setEditingSessionName(event.target.value)}
+                        onKeyDown={(event) => {
+                          event.stopPropagation();
+                          if (event.key === 'Enter') renameSession(session.id, editingSessionName);
+                          else if (event.key === 'Escape') {
+                            setEditingSessionId(null);
+                            setEditingSessionName('');
+                          }
+                        }}
+                        onBlur={() => renameSession(session.id, editingSessionName)}
+                      />
+                    ) : (
+                      <span
+                        className="session-name"
+                        title="Double-click to rename"
+                        onDoubleClick={(event) => {
+                          event.stopPropagation();
+                          setEditingSessionId(session.id);
+                          setEditingSessionName(session.name);
+                        }}
+                      >
+                        {session.name}
+                      </span>
+                    )}
+                    <span className={`session-title agent-${session.agentStatus}`}>{sessionSubtitle(session, now)}</span>
+                  </span>
+                  {slot >= 0 && (
+                    <span className="session-grid-slot" title={`${GRID_POSITION_LABELS[slot]} grid position`}>
+                      <GridPositionIcon position={slot} />
+                    </span>
+                  )}
+                  <span className={`agent-indicator ${session.agentStatus}${session.unread ? ' unread' : ''}`} title={sessionSubtitle(session, now)}>
+                    {session.agentStatus === 'complete' && <CheckIcon />}
+                    {session.agentStatus === 'attention' && <AlertIcon />}
+                    {session.agentStatus === 'error' && <span>!</span>}
+                  </span>
+                  <span className="session-actions">
+                    <button
+                      type="button"
+                      className="session-rename"
+                      title={`Rename ${session.name}`}
+                      aria-label={`Rename ${session.name}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setEditingSessionId(session.id);
+                        setEditingSessionName(session.name);
+                      }}
+                    >
+                      <EditIcon />
+                    </button>
+                    <button
+                      type="button"
+                      className={`session-pin${session.pinned ? ' pinned' : ''}`}
+                      title={session.pinned ? `Unpin ${session.name}` : `Pin ${session.name}`}
+                      aria-label={session.pinned ? `Unpin ${session.name}` : `Pin ${session.name}`}
+                      aria-pressed={session.pinned}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        togglePinnedSession(session.id);
+                      }}
+                    >
+                      <PinIcon />
+                    </button>
+                    <button
+                      type="button"
+                      className="session-close"
+                      aria-label={`Close ${session.name}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        closeTerminal(session.id);
+                      }}
+                    >
+                      <CloseIcon />
+                    </button>
+                  </span>
+                </div>
+              </Fragment>
             );
           })}
         </nav>

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.16
+
+### Changed
+
+- Pane headers now always display the terminal's user-defined sidebar name
+- Shell-controlled PTY titles remain available in the pane-name tooltip without replacing the visible custom name
+
 ## 0.3.15
 
 ### Fixed

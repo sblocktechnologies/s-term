@@ -78,7 +78,7 @@ Pi redraws are rendered atomically so wrapped drafts and streaming agent output 
 2. Select one of the quadrant buttons in the toolbar or click an empty pane.
 3. Click a terminal in the sidebar to place it in that slot.
 
-You can also drag a sidebar terminal directly onto a pane. Drag a grid pane by its header to swap it with another pane or move it into an empty position. Clicking a terminal already assigned to the grid focuses its existing position. The grid button in a pane header removes that terminal from the grid without closing its shell.
+You can also drag a sidebar terminal directly onto a pane. Drag a grid pane by its header to swap it with another pane or move it into an empty position. Each pane header displays the same user-defined terminal name as the sidebar. The shell-controlled PTY title remains available in its tooltip. Clicking a terminal already assigned to the grid focuses its existing position. The grid button in a pane header removes that terminal from the grid without closing its shell.
 
 The grid toolbar summarizes assigned panes and active agent states. Select a working, attention, complete, or error count to cycle focus through matching panes.
 

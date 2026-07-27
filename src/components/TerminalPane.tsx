@@ -8,6 +8,7 @@ import { getPiEditorSequence, PI_IMAGE_PASTE_SEQUENCE } from '../terminal-keymap
 import { contentAlignedViewport } from '../terminalViewport.js';
 import { createTerminalOutputFilter } from '../terminalOutput.js';
 import { TERMINAL_SCROLLBACK } from '../terminalConfig.js';
+import { terminalPaneTitle } from '../terminalPaneTitle.js';
 
 interface TerminalPaneProps {
   id: string;
@@ -118,6 +119,7 @@ export default function TerminalPane({
   agentStatusRef.current = agentStatus;
   const callbacksRef = useRef({ onTitleChange, onStatusChange, onCwdChange, onAgentSignal });
   callbacksRef.current = { onTitleChange, onStatusChange, onCwdChange, onAgentSignal };
+  const paneHeading = terminalPaneTitle(name, title);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -432,7 +434,7 @@ export default function TerminalPane({
             </span>
           ) : <TerminalIcon className="pane-terminal-icon" />}
           <span className={`status-dot ${agentStatus !== 'idle' ? `agent-${agentStatus}` : status}`} />
-          <span className="pane-title" title={title}>{title || name}</span>
+          <span className="pane-title" title={paneHeading.tooltip}>{paneHeading.label}</span>
           {agentStatus !== 'idle' && (
             <span className={`pane-agent-state ${agentStatus}`}>
               {agentName || 'Agent'} {agentStatus === 'complete' ? 'done' : agentStatus}

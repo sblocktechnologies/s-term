@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.15
+
+### Fixed
+
+- Pi session validation attempts blocked by a duplicate tab are no longer remembered permanently
+- A manually started Pi tab now retains its validated session identity while another tab owns the same session
+- Closing the owning tab immediately promotes the waiting Pi tab to a resumable session without polling or path guessing
+
+### Added
+
+- Pi processes running in generic shell tabs now display a clear `Not saved for restart` warning until an authoritative session path is attached
+
 ## 0.3.14
 
 ### Added

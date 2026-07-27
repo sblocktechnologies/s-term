@@ -6,6 +6,11 @@ import { agentDisplayName, type AgentProtocolMessage, type AgentState, type Agen
 import { newTerminalGridSlot, swapGridSlots } from './gridPlacement.js';
 import { sessionRecency } from './sessionRecency.js';
 import {
+  piSessionNeedsRestartWarning,
+  promotePendingPiSessions,
+  stageValidatedPiSession,
+} from './piSessionPromotion.js';
+import {
   normalizePinnedSessions,
   reorderSidebarSessions,
   sortSidebarSessionsByRecency,
@@ -45,6 +50,11 @@ interface SessionLaunch {
   piSessionId: string;
 }
 
+interface PendingPiLaunch extends SessionLaunch {
+  cwd: string;
+  modifiedAt: number;
+}
+
 interface Session {
   id: string;
   name: string;
@@ -61,6 +71,7 @@ interface Session {
   unread: boolean;
   pinned: boolean;
   launch?: SessionLaunch;
+  pendingPiLaunch?: PendingPiLaunch;
 }
 
 interface InitialWorkspace {
@@ -473,7 +484,7 @@ export default function App() {
     piSessionValidationRef.current.delete(id);
     setEditingSessionId((editingId) => editingId === id ? null : editingId);
     setTerminalLauncherTargetId((targetId) => targetId === id ? null : targetId);
-    const next = current.filter((session) => session.id !== id);
+    const next = promotePendingPiSessions(current.filter((session) => session.id !== id));
 
     sessionsRef.current = next;
     setSessions(next);
@@ -518,32 +529,12 @@ export default function App() {
           void window.sterm.piSessions.validate(signal.sessionPath).then((validated) => {
             if (validated.id !== signal.sessionId) return;
             setSessions((current) => {
-              const target = current.find((session) => session.id === id);
-              if (!target) return current;
-              if (current.some((session) => session.id !== id && (
-                session.launch?.piSessionId === validated.id ||
-                session.launch?.piSessionPath === validated.path
-              ))) return current;
-              if (target.launch?.piSessionId === validated.id && target.launch.piSessionPath === validated.path) {
-                return current;
-              }
-              const launch: SessionLaunch = {
-                type: 'pi-session',
-                piSessionPath: validated.path,
-                piSessionId: validated.id,
-              };
-              const next = current.map((session) => session.id === id
-                ? {
-                    ...session,
-                    launch,
-                    cwd: validated.cwd,
-                    lastMessageAt: session.lastMessageAt || validated.modifiedAt,
-                  }
-                : session);
+              const next = stageValidatedPiSession(current, id, validated);
+              if (next === current) return current;
               sessionsRef.current = next;
               return next;
             });
-          }).catch(() => {
+          }).catch(() => undefined).finally(() => {
             if (piSessionValidationRef.current.get(id) === validationKey) {
               piSessionValidationRef.current.delete(id);
             }
@@ -744,6 +735,7 @@ export default function App() {
             const slot = gridSlots.indexOf(session.id);
             const startsUnpinnedGroup = index > 0 && !session.pinned && sessions[index - 1].pinned;
             const recency = sessionRecency(session, now);
+            const restartWarning = piSessionNeedsRestartWarning(session);
             const dropClass = sidebarDrop?.targetId === session.id ? ` drop-${sidebarDrop.position}` : '';
             return (
               <Fragment key={session.id}>
@@ -850,7 +842,12 @@ export default function App() {
                         {session.name}
                       </span>
                     )}
-                    <span className={`session-title agent-${session.agentStatus}`}>{sessionSubtitle(session, now)}</span>
+                    <span
+                      className={`session-title agent-${session.agentStatus}${restartWarning ? ' restart-warning' : ''}`}
+                      title={restartWarning ? 'Pi is running, but this tab is not saved for restart.' : undefined}
+                    >
+                      {restartWarning ? 'Not saved for restart' : sessionSubtitle(session, now)}
+                    </span>
                   </span>
                   {slot >= 0 && (
                     <span className="session-grid-slot" title={`${GRID_POSITION_LABELS[slot]} grid position`}>

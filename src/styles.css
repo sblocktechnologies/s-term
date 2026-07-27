@@ -1645,6 +1645,11 @@ button:focus-visible {
   color: var(--pi-error);
 }
 
+.session-title.restart-warning {
+  color: var(--pi-warning);
+  font-weight: 600;
+}
+
 .session-grid-slot {
   border-color: var(--pi-border);
   color: var(--pi-muted);

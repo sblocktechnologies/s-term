@@ -8,6 +8,7 @@ import { sessionRecency } from './sessionRecency.js';
 import {
   normalizePinnedSessions,
   reorderSidebarSessions,
+  sortSidebarSessionsByRecency,
   toggleSessionPin,
   type SidebarDropPosition,
 } from './sidebarSessions.js';
@@ -30,6 +31,7 @@ import {
   PlugIcon,
   PlusIcon,
   SinglePaneIcon,
+  SortRecentIcon,
   PinIcon,
   TerminalIcon,
 } from './icons';
@@ -346,6 +348,15 @@ export default function App() {
   const reorderSession = useCallback((sourceId: string, targetId: string, position: SidebarDropPosition) => {
     setSessions((current) => {
       const next = reorderSidebarSessions(current, sourceId, targetId, position);
+      if (next === current) return current;
+      sessionsRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const sortSessionsByRecentUse = useCallback(() => {
+    setSessions((current) => {
+      const next = sortSidebarSessionsByRecency(current);
       if (next === current) return current;
       sessionsRef.current = next;
       return next;
@@ -706,6 +717,15 @@ export default function App() {
               }}
             >
               <PlusIcon />
+            </button>
+            <button
+              type="button"
+              className="sidebar-sort-button"
+              title="Sort by most recent use"
+              aria-label="Sort terminals by most recent use"
+              onClick={sortSessionsByRecentUse}
+            >
+              <SortRecentIcon />
             </button>
           </span>
           <span>{sessions.length}</span>

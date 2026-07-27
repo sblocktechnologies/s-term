@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.14
+
+### Added
+
+- Added a recent-first sort button beside the sidebar terminal launcher
+- Sorting uses the same last-message or opened-at timestamp displayed at the left of each tab
+- Pinned tabs remain at the top and both pin groups are sorted independently
+- The sorted order persists across application restarts and does not affect grid placement
+
 ## 0.3.13
 
 ### Fixed

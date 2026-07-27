@@ -17,6 +17,20 @@ export function toggleSessionPin(sessions, sessionId) {
   return next;
 }
 
+export function sortSidebarSessionsByRecency(sessions) {
+  const sorted = sessions
+    .map((session, index) => ({ session, index }))
+    .sort((left, right) => {
+      const pinDifference = Number(Boolean(right.session.pinned)) - Number(Boolean(left.session.pinned));
+      if (pinDifference !== 0) return pinDifference;
+      const leftTimestamp = left.session.lastMessageAt || left.session.createdAt || 0;
+      const rightTimestamp = right.session.lastMessageAt || right.session.createdAt || 0;
+      return rightTimestamp - leftTimestamp || left.index - right.index;
+    })
+    .map(({ session }) => session);
+  return sorted.every((session, index) => session === sessions[index]) ? sessions : sorted;
+}
+
 export function reorderSidebarSessions(sessions, sourceId, targetId, position = 'before') {
   if (sourceId === targetId) return sessions;
   const sourceIndex = sessions.findIndex((session) => session.id === sourceId);

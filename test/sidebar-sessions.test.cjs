@@ -33,6 +33,34 @@ test('pinning and unpinning move sessions to the group boundary', async () => {
   assert.equal(unpinned[1].pinned, false);
 });
 
+test('sorts each pin group by the displayed recency timestamp', async () => {
+  const { sortSidebarSessionsByRecency } = await import('../src/sidebarSessions.js');
+  const sessions = [
+    { id: 'pinned-old', pinned: true, createdAt: 100, lastMessageAt: 200 },
+    { id: 'pinned-new', pinned: true, createdAt: 100, lastMessageAt: 800 },
+    { id: 'opened-new', pinned: false, createdAt: 900 },
+    { id: 'message-new', pinned: false, createdAt: 100, lastMessageAt: 1000 },
+    { id: 'message-old', pinned: false, createdAt: 100, lastMessageAt: 300 },
+  ];
+
+  assert.deepEqual(ids(sortSidebarSessionsByRecency(sessions)), [
+    'pinned-new',
+    'pinned-old',
+    'message-new',
+    'opened-new',
+    'message-old',
+  ]);
+});
+
+test('keeps stable order for equal recency timestamps', async () => {
+  const { sortSidebarSessionsByRecency } = await import('../src/sidebarSessions.js');
+  const sessions = [
+    { id: 'a', pinned: false, createdAt: 100 },
+    { id: 'b', pinned: false, createdAt: 100 },
+  ];
+  assert.equal(sortSidebarSessionsByRecency(sessions), sessions);
+});
+
 test('reorders sidebar sessions within their pinned group', async () => {
   const { reorderSidebarSessions } = await import('../src/sidebarSessions.js');
   const sessions = [

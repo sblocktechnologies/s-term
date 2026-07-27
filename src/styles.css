@@ -155,7 +155,8 @@ button {
   gap: 5px;
 }
 
-.sidebar-add-button {
+.sidebar-add-button,
+.sidebar-sort-button {
   display: grid;
   width: 18px;
   height: 18px;
@@ -168,13 +169,15 @@ button {
   cursor: pointer;
 }
 
-.sidebar-add-button:hover {
+.sidebar-add-button:hover,
+.sidebar-sort-button:hover {
   border-color: var(--pi-border);
   color: var(--pi-accent-soft);
   background: var(--pi-selected);
 }
 
-.sidebar-add-button svg {
+.sidebar-add-button svg,
+.sidebar-sort-button svg {
   width: 12px;
   height: 12px;
 }

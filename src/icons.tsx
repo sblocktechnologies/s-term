@@ -144,6 +144,15 @@ export function EditIcon(props: IconProps) {
   );
 }
 
+export function SortRecentIcon(props: IconProps) {
+  return (
+    <svg {...defaults} {...props}>
+      <path d="M4 7h8M4 12h6M4 17h4" />
+      <path d="M18 5v14m-3-3 3 3 3-3" />
+    </svg>
+  );
+}
+
 export function SearchIcon(props: IconProps) {
   return (
     <svg {...defaults} {...props}>
